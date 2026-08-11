@@ -10,6 +10,10 @@ test:
 fmt:
 	gofmt -s -w .
 
+.PHONY: dev
+dev:
+	set -a; [ -f .env ] && . .env; set +a; go run ./cmd/openuss
+
 .PHONY: image
 image:
 	docker image build -t openuss:local .
