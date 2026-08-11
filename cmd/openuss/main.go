@@ -7,10 +7,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"bwawan.com/openuss/internal/logging"
 	"bwawan.com/openuss/internal/server"
+	"bwawan.com/openuss/internal/tracing"
 )
+
+const flushTimeout = 5 * time.Second
 
 func ResolveAddress() string {
 	port := os.Getenv("PORT")
@@ -32,6 +36,12 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	shutdownTracing, err := tracing.Init(ctx, logger)
+	if err != nil {
+		return err
+	}
+	defer handleShutdown(shutdownTracing, logger)
+
 	srv, err := server.Listen(ResolveAddress(), http.NewServeMux(), logger)
 	if err != nil {
 		return err
@@ -46,4 +56,12 @@ func run(logger *slog.Logger) error {
 	logger.InfoContext(ctx, "openuss stopped")
 
 	return nil
+}
+
+func handleShutdown(shutdown func(context.Context) error, logger *slog.Logger) {
+	flushCtx, cancel := context.WithTimeout(context.Background(), flushTimeout)
+	defer cancel()
+	if err := shutdown(flushCtx); err != nil {
+		logger.ErrorContext(flushCtx, "tracing shutdown failed", slog.Any("error", err))
+	}
 }

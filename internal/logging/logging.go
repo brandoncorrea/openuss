@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // New returns a JSON logger writing to w, enriched with any attributes carried
@@ -58,6 +60,14 @@ func (h ContextHandler) Handle(ctx context.Context, rec slog.Record) error {
 	if attrs, ok := ctx.Value(attrsKey{}).([]slog.Attr); ok {
 		rec.AddAttrs(attrs...)
 	}
+
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		rec.AddAttrs(
+			slog.String("trace_id", sc.TraceID().String()),
+			slog.String("span_id", sc.SpanID().String()),
+		)
+	}
+
 	return h.Handler.Handle(ctx, rec)
 }
 

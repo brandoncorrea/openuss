@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"bwawan.com/openuss/internal/logging"
 	"bwawan.com/openuss/internal/logging/logtest"
 )
@@ -117,6 +119,31 @@ func TestWithGroupIgnoresEmptyName(t *testing.T) {
 	require.NotContains(t, buf.String(), `"":{`)
 }
 
+func TestTraceIDsReachEveryRecord(t *testing.T) {
+	logger, rec := logtest.New()
+
+	traceID := "0102030405060708090a0b0c0d0e0f10"
+	spanID := "1112131415161718"
+
+	logger.InfoContext(sampledContext(t, traceID, spanID), "traced")
+
+	entry := rec.Find("traced")
+	require.NotNil(t, entry)
+	require.Equal(t, traceID, entry["trace_id"])
+	require.Equal(t, spanID, entry["span_id"])
+}
+
+func TestRecordsWithoutASpanCarryNoCorrelation(t *testing.T) {
+	logger, rec := logtest.New()
+
+	logger.InfoContext(context.Background(), "untraced")
+
+	entry := rec.Find("untraced")
+	require.NotNil(t, entry)
+	require.NotContains(t, entry, "trace_id")
+	require.NotContains(t, entry, "span_id")
+}
+
 func TestContextAttrsDoNotLeakBetweenSiblings(t *testing.T) {
 	logger, rec := logtest.New()
 
@@ -136,4 +163,20 @@ func TestContextAttrsDoNotLeakBetweenSiblings(t *testing.T) {
 	require.NotNil(t, entry)
 	require.Equal(t, "yes", entry["only_left"])
 	require.NotContains(t, entry, "only_right")
+}
+
+func sampledContext(t *testing.T, traceID, spanID string) context.Context {
+	t.Helper()
+
+	tid, err := trace.TraceIDFromHex(traceID)
+	require.NoError(t, err)
+
+	sid, err := trace.SpanIDFromHex(spanID)
+	require.NoError(t, err)
+
+	return trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    tid,
+		SpanID:     sid,
+		TraceFlags: trace.FlagsSampled,
+	}))
 }
