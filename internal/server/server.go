@@ -3,27 +3,32 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
 )
 
-const shutdownTimeout = 10 * time.Second
+const defaultShutdownTimeout = 10 * time.Second
 
 type Server struct {
-	http     *http.Server
-	listener net.Listener
+	http            *http.Server
+	listener        net.Listener
+	logger          *slog.Logger
+	shutdownTimeout time.Duration
 }
 
-func Listen(addr string) (*Server, error) {
+func Listen(addr string, handler http.Handler, logger *slog.Logger) (*Server, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
+		logger:          logger,
+		shutdownTimeout: defaultShutdownTimeout,
 		http: &http.Server{
-			Handler:           http.NewServeMux(),
+			Handler:           handler,
 			ReadHeaderTimeout: 15 * time.Second,
 			ReadTimeout:       15 * time.Second,
 			WriteTimeout:      10 * time.Second,
@@ -54,8 +59,16 @@ func (s *Server) Run(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 	defer cancel()
 
-	return s.http.Shutdown(shutdownCtx)
+	s.logger.InfoContext(shutdownCtx, "draining connections",
+		slog.Duration("timeout", s.shutdownTimeout))
+
+	if err := s.http.Shutdown(shutdownCtx); err != nil {
+		s.logger.ErrorContext(shutdownCtx, "drain did not complete", slog.Any("error", err))
+		return err
+	}
+
+	return nil
 }
