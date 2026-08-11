@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"bwawan.com/openuss/internal/logging"
+	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
 )
@@ -42,7 +42,7 @@ func run(logger *slog.Logger) error {
 	}
 	defer handleShutdown(shutdownTracing, logger)
 
-	srv, err := server.Listen(ResolveAddress(), http.NewServeMux(), logger)
+	srv, err := server.Listen(ResolveAddress(), router.New(), logger)
 	if err != nil {
 		return err
 	}
