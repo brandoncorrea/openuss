@@ -13,5 +13,6 @@ func New() http.Handler {
 	mux.HandleFunc("GET /versioning/versions/astm.f3548.v21", versioning.GetVersion)
 	mux.HandleFunc("GET /flight_planning/v1/status", flightplanning.GetStatus)
 	mux.HandleFunc("POST /flight_planning/v1/clear_area_requests", flightplanning.ClearArea)
+	mux.HandleFunc("PUT /flight_planning/v1/flight_plans/{flight_id}", flightplanning.PutFlightPlan)
 	return mux
 }
