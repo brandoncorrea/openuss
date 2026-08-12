@@ -31,6 +31,7 @@ v1:
           second_utm_auth: second_utm_auth
           planning_area: planning_area
           problematically_big_area: problematically_big_area
+          test_exclusions: test_exclusions
 
     # When a test run is executed, a "baseline signature" is computed uniquely identifying the "baseline" of the test,
     # usually excluding exactly what systems are participating in the test (the "environment").  This is a list of
@@ -277,6 +278,11 @@ v1:
                   degrees_north: 32.7181
                   degrees_east: -96.7587
                   meters_up: 93
+        test_exclusions:
+          $content_schema: monitoring/uss_qualifier/resources/definitions/ResourceDeclaration.json
+          resource_type: resources.dev.TestExclusionsResource
+          specification:
+            allow_private_addresses: true
 
     # How to execute a test run using this configuration
     execution:
