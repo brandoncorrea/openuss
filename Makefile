@@ -29,3 +29,7 @@ run: image
 .PHONY: stop
 stop:
 	-docker rm -f openuss
+
+.PHONY: apis
+apis:
+	scripts/generate-apis.sh

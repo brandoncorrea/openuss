@@ -1,0 +1,1315 @@
+// This file is auto-generated; do not change as any changes will be overwritten
+package scdussv1
+
+import (
+	"bwawan.com/openuss/internal/api"
+	"context"
+)
+
+var (
+	UtmAvailabilityArbitrationScope          = api.RequiredScope("utm.availability_arbitration")
+	UtmConformanceMonitoringSaScope          = api.RequiredScope("utm.conformance_monitoring_sa")
+	UtmConstraintManagementScope             = api.RequiredScope("utm.constraint_management")
+	UtmConstraintProcessingScope             = api.RequiredScope("utm.constraint_processing")
+	UtmStrategicCoordinationScope            = api.RequiredScope("utm.strategic_coordination")
+	QueryOperationalIntentReferencesSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	GetOperationalIntentReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	CreateOperationalIntentReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope, UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	UpdateOperationalIntentReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope, UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	DeleteOperationalIntentReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	QueryConstraintReferencesSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+	}
+	GetConstraintReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+	}
+	CreateConstraintReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+	}
+	UpdateConstraintReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+	}
+	DeleteConstraintReferenceSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+	}
+	QuerySubscriptionsSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	GetSubscriptionSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	CreateSubscriptionSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	UpdateSubscriptionSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	DeleteSubscriptionSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	MakeDssReportSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+		{
+			"Authority": {UtmAvailabilityArbitrationScope},
+		},
+	}
+	GetUssAvailabilitySecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmAvailabilityArbitrationScope},
+		},
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	SetUssAvailabilitySecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmAvailabilityArbitrationScope},
+		},
+	}
+	GetOperationalIntentDetailsSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	GetOperationalIntentTelemetrySecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+	}
+	NotifyOperationalIntentDetailsChangedSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+	}
+	GetConstraintDetailsSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+	}
+	NotifyConstraintDetailsChangedSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+	}
+	MakeUssReportSecurity = []api.AuthorizationOption{
+		{
+			"Authority": {UtmStrategicCoordinationScope},
+		},
+		{
+			"Authority": {UtmConstraintProcessingScope},
+		},
+		{
+			"Authority": {UtmConstraintManagementScope},
+		},
+		{
+			"Authority": {UtmConformanceMonitoringSaScope},
+		},
+		{
+			"Authority": {UtmAvailabilityArbitrationScope},
+		},
+	}
+)
+
+type QueryOperationalIntentReferencesRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *QueryOperationalIntentReferenceParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const QueryOperationalIntentReferencesOperationID = "QueryOperationalIntentReferences"
+
+func (request *QueryOperationalIntentReferencesRequest) OperationID() string {
+	return QueryOperationalIntentReferencesOperationID
+}
+
+type QueryOperationalIntentReferencesResponseSet struct {
+	// Operational intents were successfully retrieved.
+	Response200 *QueryOperationalIntentReferenceResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested area was too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetOperationalIntentReferenceRequest struct {
+	// EntityID of the operational intent.
+	Entityid EntityID
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetOperationalIntentReferenceOperationID = "GetOperationalIntentReference"
+
+func (request *GetOperationalIntentReferenceRequest) OperationID() string {
+	return GetOperationalIntentReferenceOperationID
+}
+
+type GetOperationalIntentReferenceResponseSet struct {
+	// Operational intent reference was retrieved successfully.
+	Response200 *GetOperationalIntentReferenceResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type CreateOperationalIntentReferenceRequest struct {
+	// EntityID of the operational intent.
+	Entityid EntityID
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutOperationalIntentReferenceParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const CreateOperationalIntentReferenceOperationID = "CreateOperationalIntentReference"
+
+func (request *CreateOperationalIntentReferenceRequest) OperationID() string {
+	return CreateOperationalIntentReferenceOperationID
+}
+
+type CreateOperationalIntentReferenceResponseSet struct {
+	// An operational intent reference was created successfully in the DSS.
+	Response201 *ChangeOperationalIntentReferenceResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the operational intent in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// * The provided key did not prove knowledge of all current and relevant airspace Entities
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *AirspaceConflictResponse
+
+	// The client attempted to transition the operational intent to Accepted or Activated while marked as Down in the DSS.
+	Response412 *ErrorResponse
+
+	// The area of the operational intent is too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type UpdateOperationalIntentReferenceRequest struct {
+	// EntityID of the operational intent.
+	Entityid EntityID
+
+	// Opaque version number of the existing operational intent reference.
+	Ovn EntityOVN
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutOperationalIntentReferenceParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const UpdateOperationalIntentReferenceOperationID = "UpdateOperationalIntentReference"
+
+func (request *UpdateOperationalIntentReferenceRequest) OperationID() string {
+	return UpdateOperationalIntentReferenceOperationID
+}
+
+type UpdateOperationalIntentReferenceResponseSet struct {
+	// An operational intent reference was updated successfully in the DSS.
+	Response200 *ChangeOperationalIntentReferenceResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the operational intent in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// * The provided key did not prove knowledge of all current and relevant airspace Entities
+	// * The provided `ovn` does not match the current version of the existing operational intent.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *AirspaceConflictResponse
+
+	// The client attempted to transition the operational intent to Accepted or Activated while marked as Down in the DSS.
+	Response412 *ErrorResponse
+
+	// The area of the operational intent is too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type DeleteOperationalIntentReferenceRequest struct {
+	// EntityID of the operational intent.
+	Entityid EntityID
+
+	// Opaque version number of the existing operational intent reference.
+	Ovn EntityOVN
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const DeleteOperationalIntentReferenceOperationID = "DeleteOperationalIntentReference"
+
+func (request *DeleteOperationalIntentReferenceRequest) OperationID() string {
+	return DeleteOperationalIntentReferenceOperationID
+}
+
+type DeleteOperationalIntentReferenceResponseSet struct {
+	// The specified operational intent was successfully removed from the DSS.
+	Response200 *ChangeOperationalIntentReferenceResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the operational intent in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// * The provided `ovn` does not match the current version of the existing operational intent.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The client attempted to delete the operational intent while marked as Down in the DSS.
+	Response412 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type QueryConstraintReferencesRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *QueryConstraintReferenceParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const QueryConstraintReferencesOperationID = "QueryConstraintReferences"
+
+func (request *QueryConstraintReferencesRequest) OperationID() string {
+	return QueryConstraintReferencesOperationID
+}
+
+type QueryConstraintReferencesResponseSet struct {
+	// Constraint references were successfully retrieved.
+	Response200 *QueryConstraintReferencesResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested area was too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetConstraintReferenceRequest struct {
+	// EntityID of the constraint.
+	Entityid EntityID
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetConstraintReferenceOperationID = "GetConstraintReference"
+
+func (request *GetConstraintReferenceRequest) OperationID() string {
+	return GetConstraintReferenceOperationID
+}
+
+type GetConstraintReferenceResponseSet struct {
+	// Constraint reference was retrieved successfully.
+	Response200 *GetConstraintReferenceResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type CreateConstraintReferenceRequest struct {
+	// EntityID of the constraint.
+	Entityid EntityID
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutConstraintReferenceParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const CreateConstraintReferenceOperationID = "CreateConstraintReference"
+
+func (request *CreateConstraintReferenceRequest) OperationID() string {
+	return CreateConstraintReferenceOperationID
+}
+
+type CreateConstraintReferenceResponseSet struct {
+	// A constraint reference was created successfully in the DSS.
+	Response201 *ChangeConstraintReferenceResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the constraint in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// * A constraint with the provided ID already exists.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The area of the constraint is too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type UpdateConstraintReferenceRequest struct {
+	// EntityID of the constraint.
+	Entityid EntityID
+
+	// Opaque version number of the existing operational intent reference.
+	Ovn EntityOVN
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutConstraintReferenceParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const UpdateConstraintReferenceOperationID = "UpdateConstraintReference"
+
+func (request *UpdateConstraintReferenceRequest) OperationID() string {
+	return UpdateConstraintReferenceOperationID
+}
+
+type UpdateConstraintReferenceResponseSet struct {
+	// A constraint reference was updated successfully in the DSS.
+	Response200 *ChangeConstraintReferenceResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the constraint in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// * The provided `ovn` does not match the current version of the existing constraint.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The area of the constraint is too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type DeleteConstraintReferenceRequest struct {
+	// EntityID of the constraint.
+	Entityid EntityID
+
+	// Opaque version number of the existing operational intent reference.
+	Ovn EntityOVN
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const DeleteConstraintReferenceOperationID = "DeleteConstraintReference"
+
+func (request *DeleteConstraintReferenceRequest) OperationID() string {
+	return DeleteConstraintReferenceOperationID
+}
+
+type DeleteConstraintReferenceResponseSet struct {
+	// The constraint was successfully removed from the DSS.
+	Response200 *ChangeConstraintReferenceResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the constraint in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// * The provided `ovn` does not match the current version of the existing constraint.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type QuerySubscriptionsRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *QuerySubscriptionParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const QuerySubscriptionsOperationID = "QuerySubscriptions"
+
+func (request *QuerySubscriptionsRequest) OperationID() string { return QuerySubscriptionsOperationID }
+
+type QuerySubscriptionsResponseSet struct {
+	// Subscriptions were retrieved successfully.
+	Response200 *QuerySubscriptionsResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested area was too large.
+	Response413 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetSubscriptionRequest struct {
+	// SubscriptionID of the subscription of interest.
+	Subscriptionid SubscriptionID
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetSubscriptionOperationID = "GetSubscription"
+
+func (request *GetSubscriptionRequest) OperationID() string { return GetSubscriptionOperationID }
+
+type GetSubscriptionResponseSet struct {
+	// Subscription information was retrieved successfully.
+	Response200 *GetSubscriptionResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// A subscription with the specified ID was not found.
+	Response404 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type CreateSubscriptionRequest struct {
+	// SubscriptionID of the subscription of interest.
+	Subscriptionid SubscriptionID
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutSubscriptionParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const CreateSubscriptionOperationID = "CreateSubscription"
+
+func (request *CreateSubscriptionRequest) OperationID() string { return CreateSubscriptionOperationID }
+
+type CreateSubscriptionResponseSet struct {
+	// A new subscription was created successfully.
+	Response200 *PutSubscriptionResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the subscription in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint or the request.
+	// * Client attempted to request notifications for an Entity type to which the scopes included in the access token do not provide access.
+	Response403 *ErrorResponse
+
+	// * A subscription with the specified ID already exists.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The client may have issued too many requests within a small period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type UpdateSubscriptionRequest struct {
+	// SubscriptionID of the subscription of interest.
+	Subscriptionid SubscriptionID
+
+	// Version of the subscription to be modified.
+	Version string
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutSubscriptionParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const UpdateSubscriptionOperationID = "UpdateSubscription"
+
+func (request *UpdateSubscriptionRequest) OperationID() string { return UpdateSubscriptionOperationID }
+
+type UpdateSubscriptionResponseSet struct {
+	// A subscription was updated successfully.
+	Response200 *PutSubscriptionResponse
+
+	// * One or more input parameters were missing or invalid.
+	// * The request attempted to mutate the subscription in a disallowed way.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint or the request.
+	// * Client attempted to request notifications for an Entity type to which the scopes included in the access token do not provide access.
+	Response403 *ErrorResponse
+
+	// * A subscription with the specified ID already exists and is managed by a different client.
+	// * The provided `version` does not match the current subscription.
+	// * Despite repeated attempts, the DSS was unable to complete the update because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The client may have issued too many requests within a small period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type DeleteSubscriptionRequest struct {
+	// SubscriptionID of the subscription of interest.
+	Subscriptionid SubscriptionID
+
+	// Version of the subscription to be modified.
+	Version string
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const DeleteSubscriptionOperationID = "DeleteSubscription"
+
+func (request *DeleteSubscriptionRequest) OperationID() string { return DeleteSubscriptionOperationID }
+
+type DeleteSubscriptionResponseSet struct {
+	// Subscription was successfully removed from DSS.
+	Response200 *DeleteSubscriptionResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// A subscription with the specified ID was not found.
+	Response404 *ErrorResponse
+
+	// * A subscription with the specified ID is managed by a different client.
+	// * The provided `version` does not match the current subscription.
+	// * Despite repeated attempts, the DSS was unable to complete the deletion because of other simultaneous changes.
+	Response409 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type MakeDssReportRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *ErrorReport
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const MakeDssReportOperationID = "MakeDssReport"
+
+func (request *MakeDssReportRequest) OperationID() string { return MakeDssReportOperationID }
+
+type MakeDssReportResponseSet struct {
+	// A new Report was created successfully (and archived).
+	Response201 *ErrorReport
+
+	// * One or more parameters were missing or invalid.
+	// * The report could not be parsed, or contains unrecognized data.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint or the request.
+	Response403 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetUssAvailabilityRequest struct {
+	// Client ID (matching their `sub` in access tokens) of the USS to which this availability applies.
+	UssId string
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetUssAvailabilityOperationID = "GetUssAvailability"
+
+func (request *GetUssAvailabilityRequest) OperationID() string { return GetUssAvailabilityOperationID }
+
+type GetUssAvailabilityResponseSet struct {
+	// Availability status of specified USS was successfully retrieved.
+	Response200 *UssAvailabilityStatusResponse
+
+	// * One or more parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint or the request.
+	Response403 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type SetUssAvailabilityRequest struct {
+	// Client ID (matching their `sub` in access tokens) of the USS to which this availability applies.
+	UssId string
+
+	// The data contained in the body of this request, if it parsed correctly
+	Body *SetUssAvailabilityStatusParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const SetUssAvailabilityOperationID = "SetUssAvailability"
+
+func (request *SetUssAvailabilityRequest) OperationID() string { return SetUssAvailabilityOperationID }
+
+type SetUssAvailabilityResponseSet struct {
+	// Availability status of specified USS was successfully updated.
+	Response200 *UssAvailabilityStatusResponse
+
+	// * One or more parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint or the request.
+	Response403 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetOperationalIntentDetailsRequest struct {
+	// EntityID for this operational intent.
+	Entityid EntityID
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetOperationalIntentDetailsOperationID = "GetOperationalIntentDetails"
+
+func (request *GetOperationalIntentDetailsRequest) OperationID() string {
+	return GetOperationalIntentDetailsOperationID
+}
+
+type GetOperationalIntentDetailsResponseSet struct {
+	// Operational intent details were retrieved successfully.
+	Response200 *GetOperationalIntentDetailsResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetOperationalIntentTelemetryRequest struct {
+	// EntityID for this operational intent.
+	Entityid EntityID
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetOperationalIntentTelemetryOperationID = "GetOperationalIntentTelemetry"
+
+func (request *GetOperationalIntentTelemetryRequest) OperationID() string {
+	return GetOperationalIntentTelemetryOperationID
+}
+
+type GetOperationalIntentTelemetryResponseSet struct {
+	// OperationalIntent telemetry details were retrieved successfully.
+	Response200 *GetOperationalIntentTelemetryResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// Operational intent is not in a state that provides telemetry.
+	Response409 *ErrorResponse
+
+	// No telemetry data is available.
+	Response412 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type NotifyOperationalIntentDetailsChangedRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutOperationalIntentDetailsParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const NotifyOperationalIntentDetailsChangedOperationID = "NotifyOperationalIntentDetailsChanged"
+
+func (request *NotifyOperationalIntentDetailsChangedRequest) OperationID() string {
+	return NotifyOperationalIntentDetailsChangedOperationID
+}
+
+type NotifyOperationalIntentDetailsChangedResponseSet struct {
+	// New or updated full operational intent information received successfully.
+	Response204 *api.EmptyResponseBody
+
+	// * One or more parameters were missing or invalid.
+	// * The Entity could not be parsed, or contains illegal data.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	// * The client identified in the access token is not the manager of this Entity according to the receiving client's records.
+	Response403 *ErrorResponse
+
+	// The Entity version specified in this message is lower than a previously-received notification, or identical to a previously-received notification and the Entity is different.
+	Response409 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type GetConstraintDetailsRequest struct {
+	// EntityID of the constraint.
+	Entityid EntityID
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const GetConstraintDetailsOperationID = "GetConstraintDetails"
+
+func (request *GetConstraintDetailsRequest) OperationID() string {
+	return GetConstraintDetailsOperationID
+}
+
+type GetConstraintDetailsResponseSet struct {
+	// Constraint details were retrieved successfully.
+	Response200 *GetConstraintDetailsResponse
+
+	// One or more input parameters were missing or invalid.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The requested Entity could not be found.
+	Response404 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type NotifyConstraintDetailsChangedRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *PutConstraintDetailsParameters
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const NotifyConstraintDetailsChangedOperationID = "NotifyConstraintDetailsChanged"
+
+func (request *NotifyConstraintDetailsChangedRequest) OperationID() string {
+	return NotifyConstraintDetailsChangedOperationID
+}
+
+type NotifyConstraintDetailsChangedResponseSet struct {
+	// New or updated full constraint information received successfully.
+	Response204 *api.EmptyResponseBody
+
+	// * One or more parameters were missing or invalid.
+	// * The Entity could not be parsed, or contains illegal data.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	// * The client identified in the access token is not the manager of this Entity according to the receiving client's records.
+	Response403 *ErrorResponse
+
+	// The Entity version specified in this message is lower than a previously-received notification, or identical to a previously-received notification and the Entity is different.
+	Response409 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type MakeUssReportRequest struct {
+	// The data contained in the body of this request, if it parsed correctly
+	Body *ErrorReport
+
+	// The error encountered when attempting to parse the body of this request
+	BodyParseError error
+
+	// The result of attempting to authorize this request
+	Auth api.AuthorizationResult
+}
+
+const MakeUssReportOperationID = "MakeUssReport"
+
+func (request *MakeUssReportRequest) OperationID() string { return MakeUssReportOperationID }
+
+type MakeUssReportResponseSet struct {
+	// Report received and successfully archived.
+	Response201 *ErrorReport
+
+	// * One or more parameters were missing or invalid.
+	// * The report could not be parsed, or contains unrecognized data.
+	Response400 *ErrorResponse
+
+	// Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
+	Response401 *ErrorResponse
+
+	// * The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+	Response403 *ErrorResponse
+
+	// The client issued too many requests in a short period of time.
+	Response429 *ErrorResponse
+
+	// Auto-generated internal server error response
+	Response500 *api.InternalServerErrorBody
+}
+
+type Implementation interface {
+	// Query all operational intent references in the specified area/volume/time from the DSS.
+	// ---
+	// Note that this endpoint does not produce any mutations in the DSS despite using the HTTP POST verb.  The HTTP GET verb is traditionally used for operations like this one, but requiring or using a request body for HTTP GET requests is non-standard and not supported by some architectures.  POST is used here instead of GET to ensure robust support for the use of a request body.
+	QueryOperationalIntentReferences(ctx context.Context, req *QueryOperationalIntentReferencesRequest) QueryOperationalIntentReferencesResponseSet
+
+	// Retrieve the specified operational intent reference from the DSS.
+	GetOperationalIntentReference(ctx context.Context, req *GetOperationalIntentReferenceRequest) GetOperationalIntentReferenceResponseSet
+
+	// Create the specified operational intent reference in the DSS.
+	CreateOperationalIntentReference(ctx context.Context, req *CreateOperationalIntentReferenceRequest) CreateOperationalIntentReferenceResponseSet
+
+	// Update the specified operational intent reference in the DSS.
+	UpdateOperationalIntentReference(ctx context.Context, req *UpdateOperationalIntentReferenceRequest) UpdateOperationalIntentReferenceResponseSet
+
+	// Remove the specified operational intent reference from the DSS.
+	DeleteOperationalIntentReference(ctx context.Context, req *DeleteOperationalIntentReferenceRequest) DeleteOperationalIntentReferenceResponseSet
+
+	// Query all constraint references in the specified area/volume from the DSS.
+	// ---
+	// Note that this endpoint does not produce any mutations in the DSS despite using the HTTP POST verb.  The HTTP GET verb is traditionally used for operations like this one, but requiring or using a request body for HTTP GET requests is non-standard and not supported by some architectures.  POST is used here instead of GET to ensure robust support for the use of a request body.
+	QueryConstraintReferences(ctx context.Context, req *QueryConstraintReferencesRequest) QueryConstraintReferencesResponseSet
+
+	// Retrieve the specified constraint reference from the DSS.
+	GetConstraintReference(ctx context.Context, req *GetConstraintReferenceRequest) GetConstraintReferenceResponseSet
+
+	// Create the specified constraint reference in the DSS.
+	CreateConstraintReference(ctx context.Context, req *CreateConstraintReferenceRequest) CreateConstraintReferenceResponseSet
+
+	// Update the specified constraint reference in the DSS.
+	UpdateConstraintReference(ctx context.Context, req *UpdateConstraintReferenceRequest) UpdateConstraintReferenceResponseSet
+
+	// Delete the specified constraint reference from the DSS.
+	DeleteConstraintReference(ctx context.Context, req *DeleteConstraintReferenceRequest) DeleteConstraintReferenceResponseSet
+
+	// Query all subscriptions in the specified area/volume from the DSS.
+	// ---
+	// Query subscriptions intersecting an area of interest.  Subscription notifications are only triggered by (and contain full information of) changes to, creation of, or deletion of, Entities referenced by or stored in the DSS; they do not involve any data transfer (such as remote ID telemetry updates) apart from Entity information.
+	// Note that this parameter is a JSON object (in the 'request-body'). Note that either or both of the 'altitude' and 'time' values may be omitted from this parameter.
+	// Only subscriptions belonging to the caller are returned.  This endpoint would be used if a USS lost track of subscriptions they had created and/or wanted to resolve an error indicating that they had too many existing subscriptions in an area.
+	QuerySubscriptions(ctx context.Context, req *QuerySubscriptionsRequest) QuerySubscriptionsResponseSet
+
+	// Retrieve the specified subscription from the DSS.
+	// ---
+	// Retrieve a specific subscription.
+	GetSubscription(ctx context.Context, req *GetSubscriptionRequest) GetSubscriptionResponseSet
+
+	// Create the specified subscription in the DSS.
+	// ---
+	// Create a subscription.
+	// Subscription notifications are only triggered by (and contain full information of) changes to, creation of, or deletion of, Entities referenced by or stored in the DSS; they do not involve any data transfer (such as remote ID telemetry updates) apart from Entity information.
+	CreateSubscription(ctx context.Context, req *CreateSubscriptionRequest) CreateSubscriptionResponseSet
+
+	// Update the specified subscription in the DSS.
+	// ---
+	// Update a subscription.
+	// Subscription notifications are only triggered by (and contain full information of) changes to, creation of, or deletion of, Entities referenced by or stored in the DSS; they do not involve any data transfer (such as remote ID telemetry updates) apart from Entity information.
+	// The standard requires each operational intent to have a subscription that cover the 4D volume of the operational intent.  If a USS attempts to update a subscription upon which an operational intent depends, and this update would cause the operational intent to lose subscription coverage, the update will be rejected by the DSS as a bad request.
+	UpdateSubscription(ctx context.Context, req *UpdateSubscriptionRequest) UpdateSubscriptionResponseSet
+
+	// Remove the specified subscription from the DSS.
+	// ---
+	// The standard requires each operational intent to have a subscription that cover the 4D volume of the operational intent.  If a USS attempts to delete a subscription upon which an operational intent depends, the deletion will be rejected by the DSS as a bad request.
+	DeleteSubscription(ctx context.Context, req *DeleteSubscriptionRequest) DeleteSubscriptionResponseSet
+
+	// Report information about communication issues to a DSS.
+	// ---
+	// Report issues to a DSS. Data sent to this endpoint is archived.
+	MakeDssReport(ctx context.Context, req *MakeDssReportRequest) MakeDssReportResponseSet
+
+	// Get availability status of a USS.
+	GetUssAvailability(ctx context.Context, req *GetUssAvailabilityRequest) GetUssAvailabilityResponseSet
+
+	// Set availability status of a USS.
+	SetUssAvailability(ctx context.Context, req *SetUssAvailabilityRequest) SetUssAvailabilityResponseSet
+
+	// Retrieve the specified operational intent details from a USS.
+	// ---
+	// The USS hosting this endpoint returns the details (and reference) of an operational intent it manages.  While the USS has a pending request to change the operational intent in the DSS, the USS should report the most recent version the USS knows was accepted by the DSS.  So, before a USS receives a response to create an operational intent reference in the DSS, it should return 404 if queried for that operational intent at this endpoint.
+	GetOperationalIntentDetails(ctx context.Context, req *GetOperationalIntentDetailsRequest) GetOperationalIntentDetailsResponseSet
+
+	// Query detailed information on the position of an off-nominal operational intent from a USS.
+	GetOperationalIntentTelemetry(ctx context.Context, req *GetOperationalIntentTelemetryRequest) GetOperationalIntentTelemetryResponseSet
+
+	// Notify a peer USS of changed operational intent details.
+	// ---
+	// Notify a peer USS directly of changed operational intent details (usually as a requirement of previous interactions with the DSS).
+	NotifyOperationalIntentDetailsChanged(ctx context.Context, req *NotifyOperationalIntentDetailsChangedRequest) NotifyOperationalIntentDetailsChangedResponseSet
+
+	// Retrieve the specified constraint details from a USS.
+	// ---
+	// The USS hosting this endpoint returns the details (and reference) of a constraint it manages.  While the USS has a pending request to change the constraint in the DSS, the USS should report the most recent version the USS knows was accepted by the DSS.  So, before a USS receives a response to create a constraint reference in the DSS, it should return 404 if queried for that constraint at this endpoint.
+	GetConstraintDetails(ctx context.Context, req *GetConstraintDetailsRequest) GetConstraintDetailsResponseSet
+
+	// Notify a peer USS of changed constraint details.
+	// ---
+	// Notify a peer USS directly of changed constraint details (usually as a requirement of previous interactions with the DSS).
+	NotifyConstraintDetailsChanged(ctx context.Context, req *NotifyConstraintDetailsChangedRequest) NotifyConstraintDetailsChangedResponseSet
+
+	// Notify USS of an error encountered that might otherwise go unnoticed.
+	// ---
+	// Endpoint to provide feedback (errors, etc.) that might otherwise go unnoticed by this USS.  This endpoint is used for all feedback related to operational intents and constraints.
+	MakeUssReport(ctx context.Context, req *MakeUssReportRequest) MakeUssReportResponseSet
+}

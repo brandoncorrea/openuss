@@ -3,11 +3,11 @@ package flightplanning
 import (
 	"net/http"
 
-	"bwawan.com/openuss/internal/util"
+	"bwawan.com/openuss/internal/api"
 )
 
 func GetStatus(w http.ResponseWriter, _ *http.Request) {
-	util.WriteJSON(w, map[string]string{
+	api.WriteJSON(w, http.StatusOK, map[string]string{
 		"status": "Ready",
 	})
 }
