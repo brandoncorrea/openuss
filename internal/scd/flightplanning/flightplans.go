@@ -1,14 +1,83 @@
 package flightplanning
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/internal/api/scdussv1"
 )
 
-func PutFlightPlan(w http.ResponseWriter, _ *http.Request) {
-	api.WriteJSON(w, http.StatusOK, map[string]string{
-		"planning_result":    "Rejected",
-		"flight_plan_status": "NotPlanned",
-	})
+type FlightPlanBasicInformation struct {
+	UsageState  string              `json:"usage_state"`
+	UasState    string              `json:"uas_state"`
+	Area        []scdussv1.Volume4D `json:"area"`
+	UtmId       *string             `json:"utm_id"`
+	Description *string             `json:"description"`
+}
+
+type AstmF3548v21 struct {
+	Priority int `json:"priority"`
+}
+
+type FlightPlan struct {
+	BasicInformation FlightPlanBasicInformation `json:"basic_information"`
+	Astm             AstmF3548v21               `json:"astm_f3548_21"`
+}
+
+func (flight *FlightPlan) StartTime() time.Time {
+	// TODO: What if there are no areas?
+	return RFC3339(flight.BasicInformation.Area[0].TimeStart.Value)
+}
+
+func (flight *FlightPlan) EndTime() time.Time {
+	// TODO: What if there are no areas?
+	return RFC3339(flight.BasicInformation.Area[0].TimeEnd.Value)
+}
+
+func RFC3339(s string) time.Time {
+	// TODO: Handle error
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
+}
+
+type PutFlightPlanBody struct {
+	RequestId      scdussv1.UUIDv4Format `json:"request_id"`
+	ExecutionStyle string                `json:"execution_style"`
+	FlightPlan     FlightPlan            `json:"flight_plan"`
+}
+
+func PutFlightPlan(w http.ResponseWriter, r *http.Request) {
+	var body PutFlightPlanBody
+
+	// TODO: Handle Error
+	json.NewDecoder(r.Body).Decode(&body)
+
+	if isTooEager(body.FlightPlan) {
+		api.WriteJSON(w, http.StatusOK, map[string]any{
+			"activity_result":    "Rejected",
+			"planning_result":    "Rejected",
+			"flight_plan_status": "NotPlanned",
+		})
+	} else if hasEnded(body.FlightPlan) {
+		api.WriteJSON(w, http.StatusOK, map[string]any{
+			"activity_result":    "Rejected",
+			"planning_result":    "Rejected",
+			"flight_plan_status": "NotPlanned",
+		})
+	} else {
+		api.WriteJSON(w, http.StatusOK, map[string]string{
+			"planning_result":    "Completed",
+			"flight_plan_status": "Planned",
+		})
+	}
+}
+
+func isTooEager(flight FlightPlan) bool {
+	return time.Now().Add(time.Hour * 24 * 30).Before(flight.StartTime())
+}
+
+func hasEnded(flight FlightPlan) bool {
+	return flight.EndTime().Before(time.Now())
 }
