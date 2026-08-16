@@ -35,6 +35,8 @@ go.work.sum
 .agents
 .claude
 .codex
+AGENTS.md
+CLAUDE.md
 
 # Beads / Dolt files (added by bd init)
 .beads
