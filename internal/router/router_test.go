@@ -31,6 +31,10 @@ func (*FakeFlightPlanning) PutFlightPlan(w http.ResponseWriter, r *http.Request)
 	RespondText(w, "PutFlightPlan: "+r.PathValue("flight_plan_id"))
 }
 
+func (*FakeFlightPlanning) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
+	RespondText(w, "DeleteFlightPlan: "+r.PathValue("flight_plan_id"))
+}
+
 func NewFakeHandler() http.Handler {
 	return New(&FakeVersioning{}, &FakeFlightPlanning{})
 }
@@ -64,6 +68,11 @@ func TestRoutes(t *testing.T) {
 			Method: http.MethodPut,
 			Path:   "/flight_planning/v1/flight_plans/FOO_ID",
 			Result: "PutFlightPlan: FOO_ID",
+		},
+		{
+			Method: http.MethodDelete,
+			Path:   "/flight_planning/v1/flight_plans/BAR_ID",
+			Result: "DeleteFlightPlan: BAR_ID",
 		},
 	} {
 		t.Run(route.Method+" "+route.Path, func(t *testing.T) {

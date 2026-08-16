@@ -10,6 +10,7 @@ type FlightPlanning interface {
 	GetStatus(http.ResponseWriter, *http.Request)
 	ClearAreaRequests(http.ResponseWriter, *http.Request)
 	PutFlightPlan(http.ResponseWriter, *http.Request)
+	DeleteFlightPlan(http.ResponseWriter, *http.Request)
 }
 
 // New returns a handler covering every route OpenUSS serves.
@@ -19,5 +20,6 @@ func New(versioning Versioning, planning FlightPlanning) http.Handler {
 	mux.HandleFunc("GET /flight_planning/v1/status", planning.GetStatus)
 	mux.HandleFunc("POST /flight_planning/v1/clear_area_requests", planning.ClearAreaRequests)
 	mux.HandleFunc("PUT /flight_planning/v1/flight_plans/{flight_plan_id}", planning.PutFlightPlan)
+	mux.HandleFunc("DELETE /flight_planning/v1/flight_plans/{flight_plan_id}", planning.DeleteFlightPlan)
 	return mux
 }
