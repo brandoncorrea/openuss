@@ -27,17 +27,17 @@ type FlightPlan struct {
 }
 
 func (flight *FlightPlan) StartTime() time.Time {
-	// TODO: What if there are no areas?
+	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
 	return RFC3339(flight.BasicInformation.Area[0].TimeStart.Value)
 }
 
 func (flight *FlightPlan) EndTime() time.Time {
-	// TODO: What if there are no areas?
+	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
 	return RFC3339(flight.BasicInformation.Area[0].TimeEnd.Value)
 }
 
 func RFC3339(s string) time.Time {
-	// TODO: Handle error
+	// TODO(gap): Nothing validates a malformed timestamp
 	t, _ := time.Parse(time.RFC3339, s)
 	return t
 }
@@ -51,7 +51,7 @@ type PutFlightPlanBody struct {
 func PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	var body PutFlightPlanBody
 
-	// TODO: Handle Error
+	// TODO(gap): What happens if malformed JSON is sent?
 	json.NewDecoder(r.Body).Decode(&body)
 
 	if isTooEager(body.FlightPlan) {
@@ -59,17 +59,20 @@ func PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 			"activity_result":    "Rejected",
 			"planning_result":    "Rejected",
 			"flight_plan_status": "NotPlanned",
+			// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
 		})
 	} else if hasEnded(body.FlightPlan) {
 		api.WriteJSON(w, http.StatusOK, map[string]any{
 			"activity_result":    "Rejected",
 			"planning_result":    "Rejected",
 			"flight_plan_status": "NotPlanned",
+			// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
 		})
 	} else {
-		api.WriteJSON(w, http.StatusOK, map[string]string{
+		api.WriteJSON(w, http.StatusOK, map[string]any{
 			"planning_result":    "Completed",
 			"flight_plan_status": "Planned",
+			// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
 		})
 	}
 }
