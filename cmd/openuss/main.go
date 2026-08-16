@@ -8,10 +8,12 @@ import (
 	"syscall"
 	"time"
 
+	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/logging"
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
+	"bwawan.com/openuss/internal/versioning"
 )
 
 const flushTimeout = 5 * time.Second
@@ -42,7 +44,8 @@ func run(logger *slog.Logger) error {
 	}
 	defer handleShutdown(shutdownTracing, logger)
 
-	srv, err := server.Listen(ResolveAddress(), router.New(), logger)
+	handler := router.New(&versioning.Handler{}, &flightplanning.Handler{})
+	srv, err := server.Listen(ResolveAddress(), handler, logger)
 	if err != nil {
 		return err
 	}

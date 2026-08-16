@@ -1,4 +1,4 @@
-package versioning
+package flightplanning
 
 import (
 	"net/http/httptest"
@@ -7,11 +7,11 @@ import (
 	"bwawan.com/openuss/internal/testutil"
 )
 
-func TestGetVersion(t *testing.T) {
+func TestGetStatus(t *testing.T) {
 	response := httptest.NewRecorder()
-	GetVersion(response, nil)
+	director := &Handler{}
+	director.GetStatus(response, nil)
 	testutil.RequireJSON(t, response, map[string]any{
-		"system_identity": "astm.f3548.v21",
-		"system_version":  map[string]any{},
+		"status": "Ready",
 	})
 }

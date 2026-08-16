@@ -74,7 +74,8 @@ func TestPutFlightPlan(t *testing.T) {
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	area.TimeStart.Value = time.Now().Add(time.Hour).Format(time.RFC3339)
 	area.TimeEnd.Value = time.Now().Add(2 * time.Hour).Format(time.RFC3339)
-	PutFlightPlan(response, putFlightPlanRequest(flight))
+	planner := &Handler{}
+	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"planning_result":    "Completed",
 		"flight_plan_status": "Planned",
@@ -88,7 +89,8 @@ func TestPutFlightPlanTooFarOut(t *testing.T) {
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	area.TimeStart.Value = tooLate.Format(time.RFC3339)
 	area.TimeEnd.Value = tooLate.Add(time.Hour).Format(time.RFC3339)
-	PutFlightPlan(response, putFlightPlanRequest(flight))
+	planner := &Handler{}
+	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
@@ -103,7 +105,8 @@ func TestPutAlreadyEndedFlightPlan(t *testing.T) {
 	oneSecondAgo := time.Now().Add(-time.Second)
 	area.TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
 	area.TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
-	PutFlightPlan(response, putFlightPlanRequest(flight))
+	planner := &Handler{}
+	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
