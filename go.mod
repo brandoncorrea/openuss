@@ -1,6 +1,6 @@
 module bwawan.com/openuss
 
-go 1.26.5
+go 1.27rc3
 
 require (
 	github.com/go-logr/logr v1.4.4
