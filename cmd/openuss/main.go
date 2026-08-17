@@ -14,6 +14,7 @@ import (
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
 	"bwawan.com/openuss/internal/versioning"
+	"github.com/joho/godotenv"
 )
 
 const flushTimeout = 5 * time.Second
@@ -28,6 +29,11 @@ func ResolveAddress() string {
 
 func main() {
 	logger := logging.Default()
+	err := godotenv.Load()
+	if err != nil {
+		logger.Error("failed to load env", slog.Any("error", err))
+		os.Exit(1)
+	}
 	if err := run(logger); err != nil {
 		logger.Error("openuss exited", slog.Any("error", err))
 		os.Exit(1)
