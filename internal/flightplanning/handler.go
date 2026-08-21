@@ -1,3 +1,9 @@
 package flightplanning
 
-type Handler struct{}
+import (
+	"bwawan.com/openuss/internal/dss"
+)
+
+type Handler struct {
+	DSS dss.USSAuthority
+}

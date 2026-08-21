@@ -2,7 +2,8 @@ package logtest
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"log/slog"
 	"strings"
 	"sync"
@@ -33,10 +34,10 @@ func (r *Recorder) String() string {
 func (r *Recorder) Entries() []map[string]any {
 	var entries []map[string]any
 
-	dec := json.NewDecoder(strings.NewReader(r.String()))
+	dec := jsontext.NewDecoder(strings.NewReader(r.String()))
 	for {
 		var entry map[string]any
-		if err := dec.Decode(&entry); err != nil {
+		if err := json.UnmarshalDecode(dec, &entry); err != nil {
 			return entries
 		}
 		entries = append(entries, entry)

@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"mime"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +19,18 @@ func RequireJSON(t *testing.T, recorder *httptest.ResponseRecorder, expected map
 	require.Equal(t, "application/json", mediaType)
 
 	var body map[string]any
-	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &body))
+	require.NoError(t, json.UnmarshalRead(recorder.Body, &body))
 	require.Equal(t, expected, body)
+}
+
+type BadTransport struct {
+	Error error
+}
+
+func (transport *BadTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, transport.Error
+}
+
+func NewErrorClient(err error) *http.Client {
+	return &http.Client{Transport: &BadTransport{Error: err}}
 }

@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -82,7 +82,7 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, scopes ...st
 		return "", fmt.Errorf("auth: token endpoint returned %s: %s", response.Status, responseBody(response.Body))
 	}
 	var body DummyTokenResponse
-	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(response.Body, &body); err != nil {
 		return "", fmt.Errorf("auth: decoding token response: %w", err)
 	}
 	if strings.TrimSpace(body.AccessToken) == "" {

@@ -142,7 +142,7 @@ func TestServerReturnsInvalidJson(t *testing.T) {
 	})
 	token, err := requestToken(t, server, "foo_subject", "foo_audience", "foo_scope")
 	require.Equal(t, "", token)
-	require.ErrorContains(t, err, "auth: decoding token response: unexpected EOF")
+	require.ErrorContains(t, err, "auth: decoding token response: jsontext: unexpected EOF")
 }
 
 func TestServerReturnsUnreadableBody(t *testing.T) {

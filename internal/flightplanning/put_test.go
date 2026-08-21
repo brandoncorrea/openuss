@@ -1,7 +1,7 @@
 package flightplanning
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func newFlightPlanBody() PutFlightPlanBody {
@@ -68,14 +70,30 @@ func putFlightPlanRequest(body any) *http.Request {
 	)
 }
 
-func TestPutFlightPlan(t *testing.T) {
+func newHandler() (*Handler, *dss.InMemoryDSS) {
+	dss := dss.NewInMemoryDSS()
+	return &Handler{DSS: dss}, dss
+}
+
+func TestPutFlightPlanSucceeds(t *testing.T) {
 	response := httptest.NewRecorder()
 	flight := newFlightPlanBody()
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	area.TimeStart.Value = time.Now().Add(time.Hour).Format(time.RFC3339)
 	area.TimeEnd.Value = time.Now().Add(2 * time.Hour).Format(time.RFC3339)
-	planner := &Handler{}
+	planner, dss := newHandler()
 	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
+
+	require.Len(t, dss.References, 1)
+	for id, reference := range dss.References {
+		require.NotZero(t, id)
+		require.Equal(t, flight.FlightPlan.BasicInformation.Area, reference.Extents)
+		require.Equal(t, scdussv1.OperationalIntentState_Accepted, reference.State)
+		require.Equal(t, "http://host.docker.internal:8080", string(reference.UssBaseUrl))
+	}
+	// stored := dss.References[]
+	// require.Equal()
+
 	testutil.RequireJSON(t, response, map[string]any{
 		"planning_result":    "Completed",
 		"flight_plan_status": "Planned",
@@ -89,7 +107,7 @@ func TestPutFlightPlanTooFarOut(t *testing.T) {
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	area.TimeStart.Value = tooLate.Format(time.RFC3339)
 	area.TimeEnd.Value = tooLate.Add(time.Hour).Format(time.RFC3339)
-	planner := &Handler{}
+	planner, _ := newHandler()
 	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
@@ -105,7 +123,7 @@ func TestPutAlreadyEndedFlightPlan(t *testing.T) {
 	oneSecondAgo := time.Now().Add(-time.Second)
 	area.TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
 	area.TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
-	planner := &Handler{}
+	planner, _ := newHandler()
 	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",

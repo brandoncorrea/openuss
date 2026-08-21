@@ -1,9 +1,10 @@
 package flightplanning
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"time"
+	"uuid"
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
@@ -15,11 +16,11 @@ type PutFlightPlanBody struct {
 	FlightPlan     FlightPlan            `json:"flight_plan"`
 }
 
-func (*Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	var body PutFlightPlanBody
 
 	// TODO(gap): What happens if malformed JSON is sent?
-	json.NewDecoder(r.Body).Decode(&body)
+	json.UnmarshalRead(r.Body, &body)
 
 	if isTooEager(body.FlightPlan) {
 		api.WriteJSON(w, http.StatusOK, map[string]any{
@@ -36,6 +37,12 @@ func (*Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 			// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
 		})
 	} else {
+		intent := scdussv1.PutOperationalIntentReferenceParameters{
+			Extents:    body.FlightPlan.BasicInformation.Area,
+			State:      scdussv1.OperationalIntentState_Accepted,
+			UssBaseUrl: "http://host.docker.internal:8080",
+		}
+		handler.DSS.CreateOperationalIntentReference(r.Context(), scdussv1.EntityID(uuid.New().String()), intent)
 		api.WriteJSON(w, http.StatusOK, map[string]any{
 			"planning_result":    "Completed",
 			"flight_plan_status": "Planned",

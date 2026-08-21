@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/logging"
 	"bwawan.com/openuss/internal/router"
@@ -50,7 +53,16 @@ func run(logger *slog.Logger) error {
 	}
 	defer handleShutdown(shutdownTracing, logger)
 
-	handler := router.New(&versioning.Handler{}, &flightplanning.Handler{})
+	auth, err := auth.NewDummyOAuth(
+		os.Getenv("OAUTH_ENDPOINT"),
+		os.Getenv("OAUTH_SUB"),
+		nil)
+	if err != nil {
+		return err
+	}
+
+	planning := newPlanningHandler(auth)
+	handler := router.New(&versioning.Handler{}, planning)
 	srv, err := server.Listen(ResolveAddress(), handler, logger)
 	if err != nil {
 		return err
@@ -65,6 +77,18 @@ func run(logger *slog.Logger) error {
 	logger.InfoContext(ctx, "openuss stopped")
 
 	return nil
+}
+
+// TODO: Test me
+func newPlanningHandler(tokenSource auth.TokenSource) *flightplanning.Handler {
+	return &flightplanning.Handler{
+		DSS: &dss.DSS{
+			Client:      http.DefaultClient,
+			Host:        os.Getenv("DSS_BASE_URL"),
+			Audience:    "dss1.uss1.localutm",
+			TokenSource: tokenSource,
+		},
+	}
 }
 
 func handleShutdown(shutdown func(context.Context) error, logger *slog.Logger) {
