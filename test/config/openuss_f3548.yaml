@@ -100,7 +100,7 @@ v1:
                   base_url: http://scdsc.uss1.localutm/versioning
               - participant_id: openuss
                 interuss:
-                  base_url: http://openuss.uss5.localutm/versioning
+                  base_url: http://openuss.uss5.localutm:8080/versioning
 
         # Means by which to obtain the versions of participants' production systems (in a real test, these would be different URLs than test_env_version_providers above).
         prod_env_version_providers:
@@ -114,7 +114,7 @@ v1:
                   base_url: http://scdsc.uss1.localutm/versioning
               - participant_id: openuss
                 interuss:
-                  base_url: http://openuss.uss5.localutm/versioning
+                  base_url: http://openuss.uss5.localutm:8080/versioning
 
         # Set of USSs capable of being tested as flight planners
         flight_planners:
@@ -128,7 +128,7 @@ v1:
                 v1_base_url: http://scdsc.uss1.localutm/flight_planning/v1
               # openuss is the system under test
               - participant_id: openuss
-                v1_base_url: http://openuss.uss5.localutm/flight_planning/v1
+                v1_base_url: http://openuss.uss5.localutm:8080/flight_planning/v1
 
         # Location of DSS instance that can be used to verify flight planning outcomes
         dss:

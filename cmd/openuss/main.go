@@ -27,14 +27,22 @@ const flushTimeout = 5 * time.Second
 func ResolveAddress() string {
 	port := os.Getenv("PORT")
 	if port == "" {
-		return ":80"
+		return ":8080"
 	}
 	return ":" + port
 }
 
+func loadEnv() error {
+	err := godotenv.Load()
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
 func main() {
 	logger := logging.Default()
-	err := godotenv.Load()
+	err := loadEnv()
 	if err != nil {
 		logger.Error("failed to load env", slog.Any("error", err))
 		os.Exit(1)

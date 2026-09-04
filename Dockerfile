@@ -9,5 +9,5 @@ FROM alpine:3.21
 RUN adduser -D -u 10001 openuss
 COPY --from=build /out/openuss /usr/local/bin/openuss
 USER openuss
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/openuss"]
