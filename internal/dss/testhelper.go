@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/auth"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +14,7 @@ func newDss(t *testing.T, handler http.HandlerFunc) *DSS {
 	return &DSS{
 		Host:        "http://dss.example.com",
 		Audience:    "dss.example.com",
-		TokenSource: &testutil.FakeTokenSource{},
+		TokenSource: auth.NewInMemoryTokenSource(),
 		Client:      server.Client(),
 	}
 }

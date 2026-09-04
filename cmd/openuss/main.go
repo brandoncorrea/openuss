@@ -90,14 +90,17 @@ func newServer(logger *slog.Logger) (*server.Server, error) {
 }
 
 func newTokenSource() (auth.TokenSource, error) {
+	if os.Getenv("TOKEN_IMPL") == "memory" {
+		return auth.NewInMemoryTokenSource(), nil
+	}
 	endpoint := os.Getenv("OAUTH_ENDPOINT")
 	sub := os.Getenv("OAUTH_SUB")
 	return auth.NewDummyOAuth(endpoint, sub, nil)
 }
 
-func newRouter(auth auth.TokenSource) http.Handler {
+func newRouter(tokenSource auth.TokenSource) http.Handler {
 	db := db.NewInMemoryDB()
-	planning := newPlanningHandler(auth, db)
+	planning := newPlanningHandler(tokenSource, db)
 	return router.New(
 		&versioning.Handler{},
 		planning,

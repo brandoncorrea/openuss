@@ -101,7 +101,7 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	require.Equal(t, db, handler.DB)
 }
 
-func TestNewTokenSource(t *testing.T) {
+func TestNewDummyTokenSource(t *testing.T) {
 	os.Setenv("OAUTH_ENDPOINT", "http://oauth.local")
 	os.Setenv("OAUTH_SUB", "the-oauth-subject")
 	source, err := newTokenSource()
@@ -109,4 +109,11 @@ func TestNewTokenSource(t *testing.T) {
 	dummy := source.(*auth.DummyOAuth)
 	require.Equal(t, "http://oauth.local", dummy.Endpoint.String())
 	require.Equal(t, "the-oauth-subject", dummy.Subject)
+}
+
+func TestNewInMemoryTokenSource(t *testing.T) {
+	os.Setenv("TOKEN_IMPL", "memory")
+	source, err := newTokenSource()
+	require.NoError(t, err)
+	require.IsType(t, auth.NewInMemoryTokenSource(), source)
 }

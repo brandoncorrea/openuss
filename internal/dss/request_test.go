@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,8 +23,10 @@ func TestMakeRequestOptions(t *testing.T) {
 }
 
 func TestMakeRequestGeneratesPropertToken(t *testing.T) {
+	tokenSource := auth.NewInMemoryTokenSource()
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		expected := "Bearer " + testutil.EncodeFakeToken("dss.example.com", []string{"scope-1", "scope-2"})
+		token, _ := tokenSource.Token(nil, "dss.example.com", "scope-1", "scope-2")
+		expected := "Bearer " + token
 		require.Equal(t, expected, r.Header.Get("Authorization"))
 	}
 	newDss(t, handler).MakeRequest(
@@ -57,9 +60,7 @@ func TestMakeRequestFailsToCreateNewRequest(t *testing.T) {
 
 func TestMakeRequestFailsToProduceToken(t *testing.T) {
 	dss := newDss(t, assertNotCalledHandler(t))
-	dss.TokenSource = &testutil.FakeTokenSource{
-		Error: errors.New("Boom!"),
-	}
+	dss.TokenSource = auth.NewInMemoryErrorTokenSource(errors.New("Boom!"))
 	response, err := dss.MakeRequest(t.Context(), http.MethodGet, "", map[string]any{})
 	require.Nil(t, response)
 	require.ErrorContains(t, err, "dss: failed to acquire auth token: Boom!")
