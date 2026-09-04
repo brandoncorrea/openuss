@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,9 @@ func putFlightPlanRequest(body any) *http.Request {
 
 func newHandler() (*Handler, *dss.InMemoryDSS) {
 	dss := dss.NewInMemoryDSS()
-	return &Handler{DSS: dss}, dss
+	db := db.NewInMemoryDB()
+	handler := Handler{DSS: dss, DB: db}
+	return &handler, dss
 }
 
 func TestPutFlightPlanSucceeds(t *testing.T) {
