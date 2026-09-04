@@ -25,5 +25,9 @@ func (dss *InMemoryDSS) CreateOperationalIntentReference(
 		panic("inmemory dss: missing Context")
 	}
 	dss.References[id] = reference
-	return scdussv1.ChangeOperationalIntentReferenceResponse{}, nil
+	return scdussv1.ChangeOperationalIntentReferenceResponse{
+		OperationalIntentReference: scdussv1.OperationalIntentReference{
+			Id: id,
+		},
+	}, nil
 }

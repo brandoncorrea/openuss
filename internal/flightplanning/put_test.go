@@ -81,21 +81,24 @@ func newHandler() (*Handler, *dss.InMemoryDSS) {
 func TestPutFlightPlanSucceeds(t *testing.T) {
 	response := httptest.NewRecorder()
 	flight := newFlightPlanBody()
-	area := flight.FlightPlan.BasicInformation.Area[0]
-	area.TimeStart.Value = time.Now().Add(time.Hour).Format(time.RFC3339)
-	area.TimeEnd.Value = time.Now().Add(2 * time.Hour).Format(time.RFC3339)
-	planner, dss := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
+	area := flight.FlightPlan.BasicInformation.Area
+	area[0].TimeStart.Value = time.Now().Add(time.Hour).Format(time.RFC3339)
+	area[0].TimeEnd.Value = time.Now().Add(2 * time.Hour).Format(time.RFC3339)
+	handler, dss := newHandler()
+	handler.PutFlightPlan(response, putFlightPlanRequest(flight))
 
+	memoryDb := handler.DB.(*db.InMemoryDB)
 	require.Len(t, dss.References, 1)
 	for id, reference := range dss.References {
 		require.NotZero(t, id)
-		require.Equal(t, flight.FlightPlan.BasicInformation.Area, reference.Extents)
+		require.Equal(t, area, reference.Extents)
 		require.Equal(t, scdussv1.OperationalIntentState_Accepted, reference.State)
 		require.Equal(t, "http://host.docker.internal:8080", string(reference.UssBaseUrl))
+
+		saved := memoryDb.IntentReferences[id]
+		require.Equal(t, area, *saved.Details.Volumes)
+		require.Equal(t, id, saved.Reference.Id)
 	}
-	// stored := dss.References[]
-	// require.Equal()
 
 	testutil.RequireJSON(t, response, map[string]any{
 		"planning_result":    "Completed",

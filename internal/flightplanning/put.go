@@ -22,33 +22,37 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &body)
 
-	if isTooEager(body.FlightPlan) {
-		api.WriteJSON(w, http.StatusOK, map[string]any{
-			"activity_result":    "Rejected",
-			"planning_result":    "Rejected",
-			"flight_plan_status": "NotPlanned",
-			// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
-		})
-	} else if hasEnded(body.FlightPlan) {
-		api.WriteJSON(w, http.StatusOK, map[string]any{
-			"activity_result":    "Rejected",
-			"planning_result":    "Rejected",
-			"flight_plan_status": "NotPlanned",
-			// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
-		})
+	if isTooEager(body.FlightPlan) || hasEnded(body.FlightPlan) {
+		writeRejection(w)
 	} else {
 		intent := scdussv1.PutOperationalIntentReferenceParameters{
 			Extents:    body.FlightPlan.BasicInformation.Area,
 			State:      scdussv1.OperationalIntentState_Accepted,
 			UssBaseUrl: "http://host.docker.internal:8080",
 		}
-		handler.DSS.CreateOperationalIntentReference(r.Context(), scdussv1.EntityID(uuid.New().String()), intent)
+		// TODO(gap): What happens if the DSS call results in an error?
+		result, _ := handler.DSS.CreateOperationalIntentReference(r.Context(), scdussv1.EntityID(uuid.New().String()), intent)
+		handler.DB.SaveIntent(scdussv1.OperationalIntent{
+			Reference: result.OperationalIntentReference,
+			Details: scdussv1.OperationalIntentDetails{
+				Volumes: &intent.Extents,
+			},
+		})
 		api.WriteJSON(w, http.StatusOK, map[string]any{
 			"planning_result":    "Completed",
 			"flight_plan_status": "Planned",
 			// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
 		})
 	}
+}
+
+func writeRejection(w http.ResponseWriter) {
+	api.WriteJSON(w, http.StatusOK, map[string]any{
+		"activity_result":    "Rejected",
+		"planning_result":    "Rejected",
+		"flight_plan_status": "NotPlanned",
+		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
+	})
 }
 
 func isTooEager(flight FlightPlan) bool {
