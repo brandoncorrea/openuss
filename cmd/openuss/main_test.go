@@ -79,7 +79,7 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 	require.WithinDuration(t, time.Now().Add(flushTimeout), deadline, time.Second)
 }
 
-func TestNewPlanningHandler(t *testing.T) {
+func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	os.Setenv("DSS_BASE_URL", "the-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
 	db := db.NewInMemoryDB()
@@ -89,6 +89,15 @@ func TestNewPlanningHandler(t *testing.T) {
 	require.Equal(t, "the-base-url", dss.Host)
 	require.Equal(t, "dss1.uss1.localutm", dss.Audience)
 	require.Equal(t, dummy, dss.TokenSource)
+	require.Equal(t, db, handler.DB)
+}
+
+func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
+	os.Setenv("DSS_IMPL", "memory")
+	dummy, _ := auth.NewDummyOAuth("", "", nil)
+	db := db.NewInMemoryDB()
+	handler := newPlanningHandler(dummy, db)
+	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
 	require.Equal(t, db, handler.DB)
 }
 

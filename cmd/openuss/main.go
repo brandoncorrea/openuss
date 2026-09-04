@@ -107,13 +107,24 @@ func newRouter(auth auth.TokenSource) http.Handler {
 
 func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) *flightplanning.Handler {
 	return &flightplanning.Handler{
-		DSS: &dss.DSS{
-			Client:      http.DefaultClient,
-			Host:        os.Getenv("DSS_BASE_URL"),
-			Audience:    "dss1.uss1.localutm",
-			TokenSource: tokenSource,
-		},
-		DB: db,
+		DSS: newUssAuthority(tokenSource),
+		DB:  db,
+	}
+}
+
+func newUssAuthority(tokenSource auth.TokenSource) dss.USSAuthority {
+	if os.Getenv("DSS_IMPL") == "memory" {
+		return dss.NewInMemoryDSS()
+	}
+	return newRealDss(tokenSource)
+}
+
+func newRealDss(tokenSource auth.TokenSource) dss.USSAuthority {
+	return &dss.DSS{
+		Client:      http.DefaultClient,
+		Host:        os.Getenv("DSS_BASE_URL"),
+		Audience:    "dss1.uss1.localutm",
+		TokenSource: tokenSource,
 	}
 }
 
