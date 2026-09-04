@@ -5,6 +5,8 @@ An open-source USS, built for the US UTM cohort and developed against the
 
 > **Status: early.** No conformance claims yet.
 
+[![CI](https://github.com/brandoncorrea/openuss/actions/workflows/ci.yml/badge.svg)](https://github.com/brandoncorrea/openuss/actions/workflows/ci.yml)
+
 ## Scope
 
 [ASTM F3548-21](https://store.astm.org/f3548-21.html), all three USS roles: strategic coordination, constraint management, and availability arbitration. [ASTM F3411](https://store.astm.org/f3411-22a.html) (Network Remote ID) is scoped for future work.
