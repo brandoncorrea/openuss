@@ -88,12 +88,12 @@ func TestPutFlightPlanSucceeds(t *testing.T) {
 	handler.PutFlightPlan(response, putFlightPlanRequest(flight))
 
 	memoryDb := handler.DB.(*db.InMemoryDB)
-	require.Len(t, dss.References, 1)
-	for id, reference := range dss.References {
+	require.Len(t, dss.Intents, 1)
+	for id, intent := range dss.Intents {
 		require.NotZero(t, id)
-		require.Equal(t, area, reference.Extents)
-		require.Equal(t, scdussv1.OperationalIntentState_Accepted, reference.State)
-		require.Equal(t, "http://host.docker.internal:8080", string(reference.UssBaseUrl))
+		require.Equal(t, area, *intent.Details.Volumes)
+		require.Equal(t, scdussv1.OperationalIntentState_Accepted, intent.Reference.State)
+		require.Equal(t, "http://host.docker.internal:8080", string(intent.Reference.UssBaseUrl))
 
 		saved := memoryDb.IntentReferences[id]
 		require.Equal(t, area, *saved.Details.Volumes)

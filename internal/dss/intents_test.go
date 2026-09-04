@@ -52,5 +52,29 @@ func TestCreateIntentRespondsWithBadJson(t *testing.T) {
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
 	result, err := dss.CreateOperationalIntentReference(t.Context(), entityId, reference)
 	require.Zero(t, result)
-	require.ErrorContains(t, err, "dss: failed to parse response body: json:")
+	require.Error(t, err)
+}
+
+func TestDeleteIntentRespondsWithChangeResult(t *testing.T) {
+	entityId := scdussv1.EntityID(uuid.New().String())
+	ovn := scdussv1.EntityOVN(uuid.New().String())
+	response := scdussv1.ChangeOperationalIntentReferenceResponse{}
+	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+		api.WriteJSON(w, http.StatusOK, response)
+	})
+	result, err := dss.DeleteOperationalIntent(t.Context(), entityId, ovn)
+	require.NoError(t, err)
+	require.Equal(t, response, result)
+}
+
+func TestDeleteIntentRequestParameters(t *testing.T) {
+	entityId := uuid.New().String()
+	ovn := uuid.New().String()
+	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
+		assert.Equal(t, token, r.Header.Get("Authorization"))
+		assert.Equal(t, "/dss/v1/operational_intent_references/"+entityId+"/"+ovn, r.RequestURI)
+	})
+	dss.DeleteOperationalIntent(t.Context(), scdussv1.EntityID(entityId), scdussv1.EntityOVN(ovn))
 }

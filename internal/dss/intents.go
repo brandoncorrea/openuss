@@ -2,7 +2,6 @@ package dss
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
@@ -23,13 +22,28 @@ func (dss *DSS) CreateOperationalIntentReference(
 	reference scdussv1.PutOperationalIntentReferenceParameters,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
 	uri := "/dss/v1/operational_intent_references/" + string(entityId)
-	response, err := dss.MakeRequest(ctx, http.MethodPut, uri, reference, scdussv1.UtmStrategicCoordinationScope)
+	return requestIntentChange(dss, ctx, http.MethodPut, uri, reference)
+}
+
+func (dss *DSS) DeleteOperationalIntent(
+	ctx context.Context,
+	entityId scdussv1.EntityID,
+	ovn scdussv1.EntityOVN,
+) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
+	uri := "/dss/v1/operational_intent_references/" + string(entityId) + "/" + string(ovn)
+	return requestIntentChange(dss, ctx, http.MethodDelete, uri, nil)
+}
+
+func requestIntentChange(
+	dss *DSS,
+	ctx context.Context,
+	method string,
+	uri string,
+	body any,
+) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
+	response, err := dss.MakeRequest(ctx, method, uri, body, scdussv1.UtmStrategicCoordinationScope)
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}
-	result, err := util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
-	if err != nil {
-		return result, fmt.Errorf("dss: failed to parse response body: %w", err)
-	}
-	return result, nil
+	return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
 }
