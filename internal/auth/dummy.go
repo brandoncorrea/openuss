@@ -12,9 +12,9 @@ import (
 )
 
 type DummyOAuth struct {
-	endpoint *url.URL
-	subject  string
-	client   *http.Client
+	Endpoint *url.URL
+	Subject  string
+	Client   *http.Client
 }
 
 const maxErrorDetail = 512
@@ -39,9 +39,9 @@ func NewDummyOAuth(endpoint string, subject string, client *http.Client) (*Dummy
 		client = http.DefaultClient
 	}
 	return &DummyOAuth{
-		endpoint: parsed,
-		subject:  subject,
-		client:   client,
+		Endpoint: parsed,
+		Subject:  subject,
+		Client:   client,
 	}, nil
 }
 
@@ -61,19 +61,19 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, scopes ...st
 		return "", errors.New("auth: at least one scope is required")
 	}
 
-	endpoint := *auth.endpoint
+	endpoint := *auth.Endpoint
 	endpoint.RawQuery = url.Values{
 		"grant_type":        {"client_credentials"},
 		"scope":             {strings.Join(scopes, " ")},
 		"intended_audience": {audience},
 		"issuer":            {"dummy"},
-		"sub":               {auth.subject},
+		"sub":               {auth.Subject},
 	}.Encode()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
 		return "", fmt.Errorf("auth: building token request: %w", err)
 	}
-	response, err := auth.client.Do(request)
+	response, err := auth.Client.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("auth: requesting token: %w", err)
 	}

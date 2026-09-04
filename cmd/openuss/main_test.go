@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/db"
+	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/logging/logtest"
 )
 
@@ -67,4 +72,27 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 	require.NoError(t, flushErr)
 	require.True(t, hasDeadline)
 	require.WithinDuration(t, time.Now().Add(flushTimeout), deadline, time.Second)
+}
+
+func TestNewPlanningHandler(t *testing.T) {
+	os.Setenv("DSS_BASE_URL", "the-base-url")
+	dummy, _ := auth.NewDummyOAuth("", "", nil)
+	db := db.NewInMemoryDB()
+	handler := newPlanningHandler(dummy, db)
+	dss := handler.DSS.(*dss.DSS)
+	require.Equal(t, http.DefaultClient, dss.Client)
+	require.Equal(t, "the-base-url", dss.Host)
+	require.Equal(t, "dss1.uss1.localutm", dss.Audience)
+	require.Equal(t, dummy, dss.TokenSource)
+	require.Equal(t, db, handler.DB)
+}
+
+func TestNewTokenSource(t *testing.T) {
+	os.Setenv("OAUTH_ENDPOINT", "http://oauth.local")
+	os.Setenv("OAUTH_SUB", "the-oauth-subject")
+	source, err := newTokenSource()
+	require.NoError(t, err)
+	dummy := source.(*auth.DummyOAuth)
+	require.Equal(t, "http://oauth.local", dummy.Endpoint.String())
+	require.Equal(t, "the-oauth-subject", dummy.Subject)
 }

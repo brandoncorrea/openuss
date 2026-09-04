@@ -69,22 +69,22 @@ func TestNewDummyOAuthMustHaveSubject(t *testing.T) {
 func TestNewDummyOAuth(t *testing.T) {
 	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", nil)
 	require.NoError(t, err)
-	require.Equal(t, "foo_subject", dummy.subject)
-	require.Equal(t, "http://dummy/token", dummy.endpoint.String())
-	require.Equal(t, http.DefaultClient, dummy.client)
+	require.Equal(t, "foo_subject", dummy.Subject)
+	require.Equal(t, "http://dummy/token", dummy.Endpoint.String())
+	require.Equal(t, http.DefaultClient, dummy.Client)
 }
 
 func TestNewDummyOAuthTrimsSubject(t *testing.T) {
 	dummy, err := NewDummyOAuth("http://dummy/token", "  foo  subject  ", nil)
 	require.NoError(t, err)
-	require.Equal(t, "foo  subject", dummy.subject)
+	require.Equal(t, "foo  subject", dummy.Subject)
 }
 
 func TestNewDummyOAuthOverridesClient(t *testing.T) {
 	client := fakeServerClient(t)
 	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", client)
 	require.NoError(t, err)
-	require.Equal(t, client, dummy.client)
+	require.Equal(t, client, dummy.Client)
 }
 
 func TestTokenWithNoAudience(t *testing.T) {

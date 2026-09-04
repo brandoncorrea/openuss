@@ -10,6 +10,7 @@ import (
 
 type FakeVersioning struct{}
 type FakeFlightPlanning struct{}
+type FakeOperations struct{}
 
 func RespondText(w http.ResponseWriter, content string) {
 	w.Write([]byte(content))
@@ -35,8 +36,16 @@ func (*FakeFlightPlanning) DeleteFlightPlan(w http.ResponseWriter, r *http.Reque
 	RespondText(w, "DeleteFlightPlan: "+r.PathValue("flight_plan_id"))
 }
 
+func (*FakeOperations) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
+	RespondText(w, "GetOperationalIntent: "+r.PathValue("entity_id"))
+}
+
 func NewFakeHandler() http.Handler {
-	return New(&FakeVersioning{}, &FakeFlightPlanning{})
+	return New(
+		&FakeVersioning{},
+		&FakeFlightPlanning{},
+		&FakeOperations{},
+	)
 }
 
 func TestRoutes(t *testing.T) {
@@ -73,6 +82,11 @@ func TestRoutes(t *testing.T) {
 			Method: http.MethodDelete,
 			Path:   "/flight_planning/v1/flight_plans/BAR_ID",
 			Result: "DeleteFlightPlan: BAR_ID",
+		},
+		{
+			Method: http.MethodGet,
+			Path:   "/uss/v1/operational_intents/BAR_ID",
+			Result: "GetOperationalIntent: BAR_ID",
 		},
 	} {
 		t.Run(route.Method+" "+route.Path, func(t *testing.T) {

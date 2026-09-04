@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/logging"
+	"bwawan.com/openuss/internal/operations"
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
@@ -52,18 +54,11 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer handleShutdown(shutdownTracing, logger)
+	return runServer(ctx, logger)
+}
 
-	auth, err := auth.NewDummyOAuth(
-		os.Getenv("OAUTH_ENDPOINT"),
-		os.Getenv("OAUTH_SUB"),
-		nil)
-	if err != nil {
-		return err
-	}
-
-	planning := newPlanningHandler(auth)
-	handler := router.New(&versioning.Handler{}, planning)
-	srv, err := server.Listen(ResolveAddress(), handler, logger)
+func runServer(ctx context.Context, logger *slog.Logger) error {
+	srv, err := newServer(logger)
 	if err != nil {
 		return err
 	}
@@ -75,12 +70,34 @@ func run(logger *slog.Logger) error {
 	}
 
 	logger.InfoContext(ctx, "openuss stopped")
-
 	return nil
 }
 
-// TODO: Test me
-func newPlanningHandler(tokenSource auth.TokenSource) *flightplanning.Handler {
+func newServer(logger *slog.Logger) (*server.Server, error) {
+	auth, err := newTokenSource()
+	if err != nil {
+		return nil, err
+	}
+	return server.Listen(ResolveAddress(), newRouter(auth), logger)
+}
+
+func newTokenSource() (auth.TokenSource, error) {
+	endpoint := os.Getenv("OAUTH_ENDPOINT")
+	sub := os.Getenv("OAUTH_SUB")
+	return auth.NewDummyOAuth(endpoint, sub, nil)
+}
+
+func newRouter(auth auth.TokenSource) http.Handler {
+	db := db.NewInMemoryDB()
+	planning := newPlanningHandler(auth, db)
+	return router.New(
+		&versioning.Handler{},
+		planning,
+		&operations.Handler{DB: db},
+	)
+}
+
+func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) *flightplanning.Handler {
 	return &flightplanning.Handler{
 		DSS: &dss.DSS{
 			Client:      http.DefaultClient,
@@ -88,6 +105,7 @@ func newPlanningHandler(tokenSource auth.TokenSource) *flightplanning.Handler {
 			Audience:    "dss1.uss1.localutm",
 			TokenSource: tokenSource,
 		},
+		DB: db,
 	}
 }
 
