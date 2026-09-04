@@ -8,6 +8,7 @@ import (
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/db"
 )
 
 type PutFlightPlanBody struct {
@@ -22,6 +23,7 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &body)
 
+	// TODO(gap): Validate flight_plan_id is a valid UUID
 	if isTooEager(body.FlightPlan) || hasEnded(body.FlightPlan) {
 		writeRejection(w)
 	} else {
@@ -30,13 +32,29 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 			State:      scdussv1.OperationalIntentState_Accepted,
 			UssBaseUrl: "http://host.docker.internal:8080",
 		}
+
 		// TODO(gap): What happens if the DSS call results in an error?
+		// TODO(next): DSS returns a conflict - should address the TODO(gap) above
 		result, _ := handler.DSS.CreateOperationalIntentReference(r.Context(), scdussv1.EntityID(uuid.New().String()), intent)
-		handler.DB.SaveIntent(scdussv1.OperationalIntent{
-			Reference: result.OperationalIntentReference,
-			Details: scdussv1.OperationalIntentDetails{
-				Volumes: &intent.Extents,
-			},
+
+		timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)
+		timeEnd, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeEnd.Value)
+		handler.DB.SaveIntent(db.OperationalIntent{
+			EntityID:        result.OperationalIntentReference.Id,
+			Manager:         result.OperationalIntentReference.Manager,
+			UssAvailability: result.OperationalIntentReference.UssAvailability,
+			Version:         result.OperationalIntentReference.Version,
+			State:           result.OperationalIntentReference.State,
+			Ovn:             *result.OperationalIntentReference.Ovn,
+			TimeStart:       timeStart,
+			TimeEnd:         timeEnd,
+			UssBaseUrl:      result.OperationalIntentReference.UssBaseUrl,
+			SubscriptionId:  result.OperationalIntentReference.SubscriptionId,
+			Volumes:         intent.Extents,
+		})
+		handler.DB.SaveFlight(db.FlightPlan{
+			Id:       uuid.MustParse(r.PathValue("flight_plan_id")),
+			EntityID: result.OperationalIntentReference.Id,
 		})
 		api.WriteJSON(w, http.StatusOK, map[string]any{
 			"planning_result":    "Completed",

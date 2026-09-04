@@ -26,10 +26,22 @@ func (dss *InMemoryDSS) CreateOperationalIntentReference(
 	mustHaveContext(ctx)
 	dss.Intents[id] = scdussv1.OperationalIntent{
 		Reference: scdussv1.OperationalIntentReference{
-			Id:         id,
-			Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-			State:      params.State,
-			UssBaseUrl: params.UssBaseUrl,
+			Id:              id,
+			Manager:         "InMemoryManager",
+			UssAvailability: scdussv1.UssAvailabilityState_Normal,
+			Version:         1,
+			State:           params.State,
+			Ovn:             new(scdussv1.EntityOVN(uuid.New().String())),
+			TimeStart: scdussv1.Time{
+				Value:  params.Extents[0].TimeStart.Value,
+				Format: "RFC3339",
+			},
+			TimeEnd: scdussv1.Time{
+				Value:  params.Extents[0].TimeEnd.Value,
+				Format: "RFC3339",
+			},
+			UssBaseUrl:     params.UssBaseUrl,
+			SubscriptionId: scdussv1.SubscriptionID(uuid.New().String()),
 		},
 		Details: scdussv1.OperationalIntentDetails{
 			Volumes: &params.Extents,

@@ -1,29 +1,51 @@
 package db
 
-import "bwawan.com/openuss/internal/api/scdussv1"
+import (
+	"uuid"
+
+	"bwawan.com/openuss/internal/api/scdussv1"
+)
 
 type InMemoryDB struct {
-	IntentReferences map[scdussv1.EntityID]scdussv1.OperationalIntent
+	Intents map[scdussv1.EntityID]OperationalIntent
+	Flights map[uuid.UUID]FlightPlan
 }
 
 func NewInMemoryDB() *InMemoryDB {
 	return &InMemoryDB{
-		IntentReferences: map[scdussv1.EntityID]scdussv1.OperationalIntent{},
+		Intents: map[scdussv1.EntityID]OperationalIntent{},
+		Flights: map[uuid.UUID]FlightPlan{},
 	}
 }
 
-func (db *InMemoryDB) SaveIntent(intent scdussv1.OperationalIntent) error {
-	db.IntentReferences[intent.Reference.Id] = intent
+func (db *InMemoryDB) SaveIntent(intent OperationalIntent) error {
+	db.Intents[intent.EntityID] = intent
 	return nil
 }
 
-func (db *InMemoryDB) GetIntent(id scdussv1.EntityID) *scdussv1.OperationalIntent {
-	if e, ok := db.IntentReferences[id]; ok {
+func (db *InMemoryDB) GetIntent(id scdussv1.EntityID) *OperationalIntent {
+	if e, ok := db.Intents[id]; ok {
 		return &e
 	}
 	return nil
 }
 
 func (db *InMemoryDB) DeleteIntent(id scdussv1.EntityID) {
-	delete(db.IntentReferences, id)
+	delete(db.Intents, id)
+}
+
+func (db *InMemoryDB) SaveFlight(flight FlightPlan) error {
+	db.Flights[flight.Id] = flight
+	return nil
+}
+
+func (db *InMemoryDB) GetFlight(id uuid.UUID) *FlightPlan {
+	if e, ok := db.Flights[id]; ok {
+		return &e
+	}
+	return nil
+}
+
+func (db *InMemoryDB) DeleteFlight(id uuid.UUID) {
+	delete(db.Flights, id)
 }

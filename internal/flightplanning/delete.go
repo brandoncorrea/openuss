@@ -2,31 +2,42 @@ package flightplanning
 
 import (
 	"net/http"
+	"uuid"
 
 	"bwawan.com/openuss/internal/api"
-	"bwawan.com/openuss/internal/api/scdussv1"
 )
 
 func (handler *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
-	flightId := r.PathValue("flight_plan_id")
-	if flightId == "" {
+	flightId, ok := parseUuid(r.PathValue("flight_plan_id"))
+	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	entityId := scdussv1.EntityID(flightId)
-	intent := handler.DB.GetIntent(entityId)
-	if intent == nil {
+	flight := handler.DB.GetFlight(flightId)
+	if flight == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	_, err := handler.DSS.DeleteOperationalIntent(r.Context(), scdussv1.EntityID(flightId), scdussv1.EntityOVN(*intent.Reference.Ovn))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	intent := handler.DB.GetIntent(flight.EntityID)
+	if intent != nil {
+		_, err := handler.DSS.DeleteOperationalIntent(r.Context(), intent.EntityID, intent.Ovn)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		handler.DB.DeleteIntent(intent.EntityID)
 	}
-	handler.DB.DeleteIntent(intent.Reference.Id)
+	handler.DB.DeleteFlight(flight.Id)
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"flight_plan_status": "Closed",
 		"planning_result":    "Completed",
 	})
+}
+
+func parseUuid(s string) (uuid.UUID, bool) {
+	if s == "" {
+		return uuid.UUID{}, false
+	}
+	result, err := uuid.Parse(s)
+	return result, err == nil
 }

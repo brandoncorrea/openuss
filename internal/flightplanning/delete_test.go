@@ -7,6 +7,7 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -19,28 +20,38 @@ func newDeleteRequest(flightPlanId *string) *http.Request {
 	return request
 }
 
-func newOperationalIntent(t *testing.T, handler *Handler) scdussv1.OperationalIntentReference {
+func newFlightPlan(t *testing.T, handler *Handler) db.FlightPlan {
 	id := scdussv1.EntityID(uuid.New().String())
-	params := scdussv1.PutOperationalIntentReferenceParameters{}
+	params := scdussv1.PutOperationalIntentReferenceParameters{
+		Extents: testutil.NewVolumes4D(),
+	}
 	result, _ := handler.DSS.CreateOperationalIntentReference(t.Context(), id, params)
 	reference := result.OperationalIntentReference
-	handler.DB.SaveIntent(scdussv1.OperationalIntent{
-		Reference: reference,
-	})
-	return reference
+	intent := db.OperationalIntent{
+		EntityID: reference.Id,
+		Ovn:      *reference.Ovn,
+	}
+	flight := db.FlightPlan{
+		Id:       uuid.New(),
+		EntityID: intent.EntityID,
+	}
+	handler.DB.SaveIntent(intent)
+	handler.DB.SaveFlight(flight)
+	return flight
 }
 
 func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	handler, dss := newHandler()
-	reference := newOperationalIntent(t, handler)
+	flight := newFlightPlan(t, handler)
 
 	recorder := httptest.NewRecorder()
-	request := newDeleteRequest(new(string(reference.Id)))
+	request := newDeleteRequest(new(flight.Id.String()))
 	handler.DeleteFlightPlan(recorder, request)
 
 	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Nil(t, handler.DB.GetIntent(reference.Id))
-	require.NotContains(t, dss.Intents, reference.Id)
+	require.Nil(t, handler.DB.GetFlight(flight.Id))
+	require.Nil(t, handler.DB.GetIntent(flight.EntityID))
+	require.NotContains(t, dss.Intents, flight.EntityID)
 	testutil.RequireJSON(t, recorder, map[string]any{
 		"flight_plan_status": "Closed",
 		"planning_result":    "Completed",
@@ -67,16 +78,17 @@ func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
 
 func TestDeleteFlightPlanFails(t *testing.T) {
 	handler, dss := newHandler()
-	reference := newOperationalIntent(t, handler)
-	intent := handler.DB.GetIntent(reference.Id)
-	intent.Reference.Ovn = new(scdussv1.EntityOVN(uuid.New().String()))
+	flight := newFlightPlan(t, handler)
+	intent := handler.DB.GetIntent(flight.EntityID)
+	intent.Ovn = scdussv1.EntityOVN(uuid.New().String())
 	handler.DB.SaveIntent(*intent)
 
 	recorder := httptest.NewRecorder()
-	request := newDeleteRequest(new(string(reference.Id)))
+	request := newDeleteRequest(new(flight.Id.String()))
 	handler.DeleteFlightPlan(recorder, request)
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
-	require.Equal(t, intent, handler.DB.GetIntent(reference.Id))
-	require.Contains(t, dss.Intents, reference.Id)
+	require.Equal(t, flight, *handler.DB.GetFlight(flight.Id))
+	require.Equal(t, intent, handler.DB.GetIntent(flight.EntityID))
+	require.Contains(t, dss.Intents, flight.EntityID)
 }

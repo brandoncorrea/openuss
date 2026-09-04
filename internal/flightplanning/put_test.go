@@ -2,11 +2,14 @@ package flightplanning
 
 import (
 	"encoding/json/v2"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+	"uuid"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
@@ -17,58 +20,29 @@ import (
 
 func newFlightPlanBody() PutFlightPlanBody {
 	return PutFlightPlanBody{
-		RequestId: "e4d3a1b2-5c6d-4e7f-8a9b-0c1d2e3f4a5b",
+		RequestId: scdussv1.UUIDv4Format(uuid.New().String()),
 		FlightPlan: FlightPlan{
 			BasicInformation: FlightPlanBasicInformation{
-				Area: []scdussv1.Volume4D{
-					{
-						TimeStart: &scdussv1.Time{
-							Value:  "2026-08-13T00:00:00Z",
-							Format: "RFC3339",
-						},
-						TimeEnd: &scdussv1.Time{
-							Value:  "2026-08-13T01:00:00Z",
-							Format: "RFC3339",
-						},
-						Volume: scdussv1.Volume3D{
-							OutlineCircle: &scdussv1.Circle{
-								Radius: &scdussv1.Radius{
-									Value: 100,
-									Units: "M",
-								},
-								Center: &scdussv1.LatLngPoint{
-									Lng: -80.6,
-									Lat: 37.2,
-								},
-							},
-							AltitudeLower: &scdussv1.Altitude{
-								Value:     0,
-								Reference: "W84",
-								Units:     "M",
-							},
-							AltitudeUpper: &scdussv1.Altitude{
-								Value:     100,
-								Reference: "W84",
-								Units:     "M",
-							},
-						},
-					},
-				},
+				Area: testutil.NewVolumes4D(),
 			},
 		},
 	}
 }
 
-func putFlightPlanRequest(body any) *http.Request {
+func newFlightParams() (uuid.UUID, PutFlightPlanBody) {
+	return uuid.New(), newFlightPlanBody()
+}
+
+func putFlightPlanRequest(id *uuid.UUID, body PutFlightPlanBody) *http.Request {
 	bytes, err := json.Marshal(body)
 	if err != nil {
 		panic(err)
 	}
-	return httptest.NewRequest(
-		http.MethodPut,
-		"/flight_planning/v1/flight_plans/e4d3a1b2-5c6d-4e7f-8a9b-0c1d2e3f4a5b",
-		strings.NewReader(string(bytes)),
-	)
+	request := httptest.NewRequest(http.MethodPut, "/blah", strings.NewReader(string(bytes)))
+	if id != nil {
+		request.SetPathValue("flight_plan_id", id.String())
+	}
+	return request
 }
 
 func newHandler() (*Handler, *dss.InMemoryDSS) {
@@ -79,42 +53,57 @@ func newHandler() (*Handler, *dss.InMemoryDSS) {
 }
 
 func TestPutFlightPlanSucceeds(t *testing.T) {
+	flightId, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	flight := newFlightPlanBody()
-	area := flight.FlightPlan.BasicInformation.Area
-	area[0].TimeStart.Value = time.Now().Add(time.Hour).Format(time.RFC3339)
-	area[0].TimeEnd.Value = time.Now().Add(2 * time.Hour).Format(time.RFC3339)
+	request := putFlightPlanRequest(&flightId, flight)
 	handler, dss := newHandler()
-	handler.PutFlightPlan(response, putFlightPlanRequest(flight))
-
-	memoryDb := handler.DB.(*db.InMemoryDB)
-	require.Len(t, dss.Intents, 1)
-	for id, intent := range dss.Intents {
-		require.NotZero(t, id)
-		require.Equal(t, area, *intent.Details.Volumes)
-		require.Equal(t, scdussv1.OperationalIntentState_Accepted, intent.Reference.State)
-		require.Equal(t, "http://host.docker.internal:8080", string(intent.Reference.UssBaseUrl))
-
-		saved := memoryDb.IntentReferences[id]
-		require.Equal(t, area, *saved.Details.Volumes)
-		require.Equal(t, id, saved.Reference.Id)
-	}
+	handler.PutFlightPlan(response, request)
 
 	testutil.RequireJSON(t, response, map[string]any{
 		"planning_result":    "Completed",
 		"flight_plan_status": "Planned",
 	})
+
+	memoryDb := handler.DB.(*db.InMemoryDB)
+	require.Len(t, dss.Intents, 1)
+
+	dssIntent := slices.Collect(maps.Values(dss.Intents))[0]
+	require.Equal(t, flight.FlightPlan.BasicInformation.Area, *dssIntent.Details.Volumes)
+	require.Equal(t, scdussv1.OperationalIntentState_Accepted, dssIntent.Reference.State)
+	require.Equal(t, "http://host.docker.internal:8080", string(dssIntent.Reference.UssBaseUrl))
+
+	savedIntent := memoryDb.GetIntent(dssIntent.Reference.Id)
+	require.Equal(t, dssIntent.Reference.Id, savedIntent.EntityID)
+	require.Equal(t, "InMemoryManager", savedIntent.Manager)
+	require.Equal(t, scdussv1.UssAvailabilityState_Normal, savedIntent.UssAvailability)
+	require.EqualValues(t, 1, savedIntent.Version)
+	require.Equal(t, scdussv1.OperationalIntentState_Accepted, savedIntent.State)
+	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionId)
+
+	_, err := uuid.Parse(string(savedIntent.Ovn))
+	require.NoError(t, err)
+
+	timeStart, _ := time.Parse(time.RFC3339Nano, dssIntent.Reference.TimeStart.Value)
+	timeEnd, _ := time.Parse(time.RFC3339Nano, dssIntent.Reference.TimeEnd.Value)
+	require.Equal(t, timeStart, savedIntent.TimeStart)
+	require.Equal(t, timeEnd, savedIntent.TimeEnd)
+
+	require.Equal(t, *dssIntent.Details.Volumes, savedIntent.Volumes)
+
+	require.Len(t, memoryDb.Flights, 1)
+	require.Contains(t, memoryDb.Flights, flightId)
+	require.Equal(t, dssIntent.Reference.Id, memoryDb.Flights[flightId].EntityID)
 }
 
 func TestPutFlightPlanTooFarOut(t *testing.T) {
+	flightId, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	flight := newFlightPlanBody()
 	tooLate := time.Now().Add(time.Hour * 24 * 30).Add(time.Second)
 	area := flight.FlightPlan.BasicInformation.Area[0]
-	area.TimeStart.Value = tooLate.Format(time.RFC3339)
-	area.TimeEnd.Value = tooLate.Add(time.Hour).Format(time.RFC3339)
+	area.TimeStart.Value = tooLate.Format(time.RFC3339Nano)
+	area.TimeEnd.Value = tooLate.Add(time.Hour).Format(time.RFC3339Nano)
 	planner, _ := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
+	planner.PutFlightPlan(response, putFlightPlanRequest(&flightId, flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
@@ -123,14 +112,14 @@ func TestPutFlightPlanTooFarOut(t *testing.T) {
 }
 
 func TestPutAlreadyEndedFlightPlan(t *testing.T) {
+	flightId, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	flight := newFlightPlanBody()
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	oneSecondAgo := time.Now().Add(-time.Second)
 	area.TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
 	area.TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
 	planner, _ := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(flight))
+	planner.PutFlightPlan(response, putFlightPlanRequest(&flightId, flight))
 	testutil.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
