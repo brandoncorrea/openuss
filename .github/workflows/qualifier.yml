@@ -1,0 +1,90 @@
+name: F3548 conformance
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: f3548-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout OpenUSS
+        uses: actions/checkout@v7
+        with:
+          path: openuss
+
+      - name: Checkout interuss/monitoring
+        uses: actions/checkout@v7
+        with:
+          repository: interuss/monitoring
+          ref: main
+          path: monitoring
+          submodules: true
+
+      - name: Start the InterUSS local ecosystem
+        run: |
+          make -C monitoring start-locally
+          make -C monitoring start-uss-mocks
+
+      - name: Start OpenUSS
+        run: make -C openuss run
+
+      - name: Run Qualifier
+        continue-on-error: true
+        env:
+          INTERUSS_MONITORING_DIR: ${{ github.workspace }}/monitoring
+        run: openuss/scripts/automated-tests.sh
+
+      - name: Upload the Report
+        uses: actions/upload-artifact@v7
+        with:
+          name: uss_qualifier-openuss_f3548
+          path: monitoring/monitoring/uss_qualifier/output
+          if-no-files-found: warn
+
+      - name: Stage the sequence view for Pages
+        run: mv monitoring/monitoring/uss_qualifier/output/openuss_f3548/sequence public/
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+
+      - name: Tear down
+        if: always()
+        run: |
+          make -C openuss stop || true
+          make -C monitoring stop-uss-mocks || true
+          make -C monitoring down-locally || true
+
+  deploy:
+    name: Publish the sequence view
+    needs: qualifier
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

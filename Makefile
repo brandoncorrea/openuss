@@ -16,20 +16,26 @@ dev:
 
 .PHONY: image
 image:
-	docker image build -t openuss:local .
+	docker compose build
 
 .PHONY: run
-run: image
-	docker run --rm -d \
-		--name openuss \
-		--hostname openuss.uss5.localutm \
-		--network interop_ecosystem_network \
-		openuss:local
+run:
+	docker compose up -d --build --wait
 
 .PHONY: stop
 stop:
-	-docker rm -f openuss
+	-docker compose down
 
 .PHONY: apis
 apis:
 	scripts/generate-apis.sh
+
+export INTERUSS_MONITORING_DIR ?= ../monitoring
+
+.PHONY: refresh-mocks
+refresh-mocks:
+	scripts/refresh-mocks.sh
+
+.PHONY: automated-tests
+automated-tests:
+	scripts/automated-tests.sh

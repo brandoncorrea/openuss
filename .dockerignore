@@ -11,3 +11,4 @@ bin/
 /openuss
 test/
 *.md
+compose.yaml
