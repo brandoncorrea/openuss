@@ -9,7 +9,7 @@ services:
       OAUTH_ENDPOINT: ${OAUTH_ENDPOINT:-http://oauth.authority.localutm:8085/token}
       OAUTH_SUB: ${OAUTH_SUB:-uss5}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/flight_planning/v1/status"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/flight_planning/v1/status"]
       interval: 2s
       retries: 15
       start_period: 1s
