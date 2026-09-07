@@ -1,6 +1,7 @@
 package db
 
 import (
+	"iter"
 	"time"
 	"uuid"
 
@@ -14,6 +15,8 @@ type DB interface {
 	SaveFlight(FlightPlan) error
 	GetFlight(uuid.UUID) *FlightPlan
 	DeleteFlight(uuid.UUID)
+	GetAllFlights() iter.Seq[FlightPlan]
+	GetAllIntents() iter.Seq[OperationalIntent]
 }
 
 type OperationalIntent struct {
