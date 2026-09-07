@@ -3,6 +3,7 @@ package flightplanning
 import (
 	"encoding/json/v2"
 	"net/http"
+	"slices"
 	"time"
 	"uuid"
 
@@ -24,7 +25,7 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	json.UnmarshalRead(r.Body, &body)
 
 	// TODO(gap): Validate flight_plan_id is a valid UUID
-	if isTooEager(body.FlightPlan) || hasEnded(body.FlightPlan) {
+	if isTooEager(body.FlightPlan) || hasEnded(body.FlightPlan) || hasAnyIntent(handler) {
 		writeRejection(w)
 	} else {
 		intent := scdussv1.PutOperationalIntentReferenceParameters{
@@ -71,6 +72,10 @@ func writeRejection(w http.ResponseWriter) {
 		"flight_plan_status": "NotPlanned",
 		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
 	})
+}
+
+func hasAnyIntent(handler *Handler) bool {
+	return len(slices.Collect(handler.DB.GetAllIntents())) > 0
 }
 
 func isTooEager(flight FlightPlan) bool {

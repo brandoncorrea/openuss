@@ -126,3 +126,18 @@ func TestPutAlreadyEndedFlightPlan(t *testing.T) {
 		"flight_plan_status": "NotPlanned",
 	})
 }
+
+func TestPutRejectsWhenAnotherIntentExists(t *testing.T) {
+	flightId, flight := newFlightParams()
+	response := httptest.NewRecorder()
+	planner, _ := newHandler()
+	planner.DB.SaveIntent(db.OperationalIntent{
+		EntityID: scdussv1.EntityID(uuid.New().String()),
+	})
+	planner.PutFlightPlan(response, putFlightPlanRequest(&flightId, flight))
+	testutil.RequireJSON(t, response, map[string]any{
+		"activity_result":    "Rejected",
+		"planning_result":    "Rejected",
+		"flight_plan_status": "NotPlanned",
+	})
+}
