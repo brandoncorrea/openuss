@@ -51,7 +51,11 @@ func putFlightPlanRequest(id *uuid.UUID, body PutFlightPlanBody) *http.Request {
 func newHandler() (*Handler, *dss.InMemoryDSS) {
 	dss := dss.NewInMemoryDSS()
 	db := db.NewInMemoryDB()
-	handler := Handler{DSS: dss, DB: db}
+	handler := Handler{
+		DSS:        dss,
+		DB:         db,
+		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://openuss.localutm"),
+	}
 	return &handler, dss
 }
 
@@ -73,7 +77,7 @@ func TestPutFlightPlanSucceeds(t *testing.T) {
 	dssIntent := slices.Collect(maps.Values(dss.Intents))[0]
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, *dssIntent.Details.Volumes)
 	require.Equal(t, scdussv1.OperationalIntentState_Accepted, dssIntent.Reference.State)
-	require.Equal(t, "http://host.docker.internal:8080", string(dssIntent.Reference.UssBaseUrl))
+	require.EqualValues(t, "http://openuss.localutm", dssIntent.Reference.UssBaseUrl)
 
 	savedIntent := memoryDb.GetIntent(dssIntent.Reference.Id)
 	require.Equal(t, dssIntent.Reference.Id, savedIntent.EntityID)

@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
@@ -86,7 +89,13 @@ func newServer(logger *slog.Logger) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return server.Listen(ResolveAddress(), newRouter(auth), logger)
+	db := db.NewInMemoryDB()
+	planning, err := newPlanningHandler(auth, db)
+	if err != nil {
+		return nil, err
+	}
+	router := newRouter(db, planning)
+	return server.Listen(ResolveAddress(), router, logger)
 }
 
 func newTokenSource() (auth.TokenSource, error) {
@@ -98,9 +107,7 @@ func newTokenSource() (auth.TokenSource, error) {
 	return auth.NewDummyOAuth(endpoint, sub, nil)
 }
 
-func newRouter(tokenSource auth.TokenSource) http.Handler {
-	db := db.NewInMemoryDB()
-	planning := newPlanningHandler(tokenSource, db)
+func newRouter(db db.DB, planning router.FlightPlanning) http.Handler {
 	return router.New(
 		&versioning.Handler{},
 		planning,
@@ -108,11 +115,16 @@ func newRouter(tokenSource auth.TokenSource) http.Handler {
 	)
 }
 
-func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) *flightplanning.Handler {
-	return &flightplanning.Handler{
-		DSS: newUssAuthority(tokenSource),
-		DB:  db,
+func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) (*flightplanning.Handler, error) {
+	ussBaseUrl := os.Getenv("USS_BASE_URL")
+	if strings.TrimSpace(ussBaseUrl) == "" {
+		return nil, errors.New("USS_BASE_URL is required")
 	}
+	return &flightplanning.Handler{
+		DSS:        newUssAuthority(tokenSource),
+		DB:         db,
+		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL(ussBaseUrl),
+	}, nil
 }
 
 func newUssAuthority(tokenSource auth.TokenSource) dss.USSAuthority {

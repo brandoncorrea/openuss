@@ -31,7 +31,7 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 		intent := scdussv1.PutOperationalIntentReferenceParameters{
 			Extents:    body.FlightPlan.BasicInformation.Area,
 			State:      scdussv1.OperationalIntentState_Accepted,
-			UssBaseUrl: "http://host.docker.internal:8080",
+			UssBaseUrl: handler.UssBaseUrl,
 		}
 
 		// TODO(gap): What happens if the DSS call results in an error?

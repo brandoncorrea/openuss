@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -79,31 +78,46 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 	require.WithinDuration(t, time.Now().Add(flushTimeout), deadline, time.Second)
 }
 
-func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
-	os.Setenv("DSS_BASE_URL", "the-base-url")
+func TestNewPlanningHandlerMissingUssBaseUrl(t *testing.T) {
+	t.Setenv("DSS_BASE_URL", "the-dss-base-url")
+	t.Setenv("USS_BASE_URL", "\r\n\t ")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
 	db := db.NewInMemoryDB()
-	handler := newPlanningHandler(dummy, db)
+	_, err := newPlanningHandler(dummy, db)
+	require.ErrorContains(t, err, "USS_BASE_URL is required")
+}
+
+func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
+	t.Setenv("DSS_BASE_URL", "the-dss-base-url")
+	t.Setenv("USS_BASE_URL", "the-uss-base-url")
+	dummy, _ := auth.NewDummyOAuth("", "", nil)
+	db := db.NewInMemoryDB()
+	handler, err := newPlanningHandler(dummy, db)
+	require.NoError(t, err)
 	dss := handler.DSS.(*dss.DSS)
 	require.Equal(t, http.DefaultClient, dss.Client)
-	require.Equal(t, "the-base-url", dss.Host)
+	require.Equal(t, "the-dss-base-url", dss.Host)
 	require.Equal(t, "dss1.uss1.localutm", dss.Audience)
 	require.Equal(t, dummy, dss.TokenSource)
 	require.Equal(t, db, handler.DB)
+	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
 }
 
 func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
-	os.Setenv("DSS_IMPL", "memory")
+	t.Setenv("DSS_IMPL", "memory")
+	t.Setenv("USS_BASE_URL", "the-uss-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
 	db := db.NewInMemoryDB()
-	handler := newPlanningHandler(dummy, db)
+	handler, err := newPlanningHandler(dummy, db)
+	require.NoError(t, err)
 	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
 	require.Equal(t, db, handler.DB)
+	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
 }
 
 func TestNewDummyTokenSource(t *testing.T) {
-	os.Setenv("OAUTH_ENDPOINT", "http://oauth.local")
-	os.Setenv("OAUTH_SUB", "the-oauth-subject")
+	t.Setenv("OAUTH_ENDPOINT", "http://oauth.local")
+	t.Setenv("OAUTH_SUB", "the-oauth-subject")
 	source, err := newTokenSource()
 	require.NoError(t, err)
 	dummy := source.(*auth.DummyOAuth)
@@ -112,7 +126,7 @@ func TestNewDummyTokenSource(t *testing.T) {
 }
 
 func TestNewInMemoryTokenSource(t *testing.T) {
-	os.Setenv("TOKEN_IMPL", "memory")
+	t.Setenv("TOKEN_IMPL", "memory")
 	source, err := newTokenSource()
 	require.NoError(t, err)
 	require.IsType(t, auth.NewInMemoryTokenSource(), source)

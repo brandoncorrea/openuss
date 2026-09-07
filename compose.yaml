@@ -8,6 +8,7 @@ services:
       DSS_BASE_URL: ${DSS_BASE_URL:-http://dss1.uss1.localutm}
       OAUTH_ENDPOINT: ${OAUTH_ENDPOINT:-http://oauth.authority.localutm:8085/token}
       OAUTH_SUB: ${OAUTH_SUB:-uss5}
+      USS_BASE_URL: ${USS_BASE_URL:-http://openuss.uss5.localutm:8080}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/flight_planning/v1/status"]
       interval: 2s
