@@ -43,6 +43,7 @@ func TestGetOperationalIntentSuccess(t *testing.T) {
 		Manager:         "the-manager",
 		UssAvailability: scdussv1.UssAvailabilityState_Normal,
 		Version:         1,
+		Priority:        2,
 		State:           scdussv1.OperationalIntentState_Accepted,
 		Ovn:             scdussv1.EntityOVN(uuid.New().String()),
 		TimeStart:       time.Now().Add(time.Minute),
@@ -75,4 +76,5 @@ func TestGetOperationalIntentSuccess(t *testing.T) {
 	require.EqualValues(t, "the-uss-base-url", result.OperationalIntent.Reference.UssBaseUrl)
 	require.Equal(t, intent.SubscriptionId, result.OperationalIntent.Reference.SubscriptionId)
 	require.Equal(t, intent.Volumes, *result.OperationalIntent.Details.Volumes)
+	require.EqualValues(t, 2, *result.OperationalIntent.Details.Priority)
 }

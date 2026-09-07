@@ -24,6 +24,7 @@ type OperationalIntent struct {
 	Manager         string
 	UssAvailability scdussv1.UssAvailabilityState
 	Version         int32
+	Priority        scdussv1.Priority
 	State           scdussv1.OperationalIntentState
 	Ovn             scdussv1.EntityOVN
 	TimeStart       time.Time

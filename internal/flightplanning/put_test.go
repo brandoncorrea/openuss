@@ -25,6 +25,9 @@ func newFlightPlanBody() PutFlightPlanBody {
 			BasicInformation: FlightPlanBasicInformation{
 				Area: testutil.NewVolumes4D(),
 			},
+			Astm: AstmF3548v21{
+				Priority: 2,
+			},
 		},
 	}
 }
@@ -77,6 +80,7 @@ func TestPutFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, "InMemoryManager", savedIntent.Manager)
 	require.Equal(t, scdussv1.UssAvailabilityState_Normal, savedIntent.UssAvailability)
 	require.EqualValues(t, 1, savedIntent.Version)
+	require.EqualValues(t, 2, savedIntent.Priority)
 	require.Equal(t, scdussv1.OperationalIntentState_Accepted, savedIntent.State)
 	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionId)
 

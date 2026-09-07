@@ -45,6 +45,7 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 			Manager:         result.OperationalIntentReference.Manager,
 			UssAvailability: result.OperationalIntentReference.UssAvailability,
 			Version:         result.OperationalIntentReference.Version,
+			Priority:        scdussv1.Priority(body.FlightPlan.Astm.Priority),
 			State:           result.OperationalIntentReference.State,
 			Ovn:             *result.OperationalIntentReference.Ovn,
 			TimeStart:       timeStart,

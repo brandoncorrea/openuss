@@ -40,7 +40,8 @@ func (handler *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Requ
 				SubscriptionId: intent.SubscriptionId,
 			},
 			Details: scdussv1.OperationalIntentDetails{
-				Volumes: &intent.Volumes,
+				Volumes:  &intent.Volumes,
+				Priority: &intent.Priority,
 			},
 		},
 	})
