@@ -6,6 +6,7 @@ An open-source USS, built for the US UTM cohort and developed against the
 > **Status: early.** No conformance claims yet.
 
 [![CI](https://github.com/brandoncorrea/openuss/actions/workflows/ci.yml/badge.svg)](https://github.com/brandoncorrea/openuss/actions/workflows/ci.yml)
+[![Qualifier](https://img.shields.io/badge/qualifier-sequence_report-blue)](https://brandoncorrea.github.io/openuss)
 
 ## Scope
 
