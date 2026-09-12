@@ -8,7 +8,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
+
+	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/internal/util"
 )
 
 type DummyOAuth struct {
@@ -45,16 +49,15 @@ func NewDummyOAuth(endpoint string, subject string, client *http.Client) (*Dummy
 	}, nil
 }
 
-func (auth *DummyOAuth) Token(ctx context.Context, audience string, scopes ...string) (string, error) {
+func (auth *DummyOAuth) Token(ctx context.Context, audience string, requiredScopes ...api.RequiredScope) (string, error) {
 	audience = strings.TrimSpace(audience)
 	if audience == "" {
 		return "", errors.New("auth: audience is required")
 	}
-	scopes = trimStrings(scopes)
-	for _, scope := range scopes {
-		if strings.TrimSpace(scope) == "" {
-			return "", errors.New("auth: scope is empty")
-		}
+
+	scopes := util.Map(requiredScopes, util.TrimString)
+	if slices.ContainsFunc(scopes, util.IsBlank) {
+		return "", errors.New("auth: scope is empty")
 	}
 
 	if len(scopes) == 0 {
@@ -85,18 +88,10 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, scopes ...st
 	if err := json.UnmarshalRead(response.Body, &body); err != nil {
 		return "", fmt.Errorf("auth: decoding token response: %w", err)
 	}
-	if strings.TrimSpace(body.AccessToken) == "" {
+	if util.IsBlank(body.AccessToken) {
 		return "", errors.New("auth: token response carried no access_token")
 	}
 	return body.AccessToken, nil
-}
-
-func trimStrings(coll []string) []string {
-	result := make([]string, len(coll))
-	for i, item := range coll {
-		result[i] = strings.TrimSpace(item)
-	}
-	return result
 }
 
 func responseBody(body io.Reader) string {

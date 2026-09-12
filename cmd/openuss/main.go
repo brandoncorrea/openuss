@@ -5,10 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -23,6 +21,8 @@ import (
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
+	"bwawan.com/openuss/internal/util"
+	"bwawan.com/openuss/internal/utmclient"
 	"bwawan.com/openuss/internal/versioning"
 	"github.com/joho/godotenv"
 )
@@ -127,7 +127,7 @@ func createRouter(db db.DB, planning router.FlightPlanning) http.Handler {
 
 func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) (*flightplanning.Handler, error) {
 	ussBaseUrl := os.Getenv("USS_BASE_URL")
-	if strings.TrimSpace(ussBaseUrl) == "" {
+	if util.IsBlank(ussBaseUrl) {
 		return nil, errors.New("USS_BASE_URL is required")
 	}
 	return &flightplanning.Handler{
@@ -145,13 +145,9 @@ func newUssAuthority(tokenSource auth.TokenSource) dss.USSAuthority {
 }
 
 func newRealDss(tokenSource auth.TokenSource) dss.USSAuthority {
-	baseUrl := os.Getenv("DSS_BASE_URL")
-	parsed, _ := url.Parse(strings.TrimSpace(baseUrl))
 	return &dss.DSS{
-		Client:      http.DefaultClient,
-		Host:        baseUrl,
-		Audience:    parsed.Hostname(),
-		TokenSource: tokenSource,
+		Host:   os.Getenv("DSS_BASE_URL"),
+		Client: utmclient.New(tokenSource, nil),
 	}
 }
 

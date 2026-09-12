@@ -5,15 +5,13 @@ import (
 	"net/http"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
-	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/util"
+	"bwawan.com/openuss/internal/utmclient"
 )
 
 type DSS struct {
-	Host        string
-	Audience    string
-	TokenSource auth.TokenSource
-	Client      *http.Client
+	Host   string
+	Client *utmclient.Client
 }
 
 func (dss *DSS) CreateOperationalIntentReference(
@@ -41,7 +39,7 @@ func requestIntentChange(
 	uri string,
 	body any,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
-	response, err := dss.MakeRequest(ctx, method, uri, body, scdussv1.UtmStrategicCoordinationScope)
+	response, err := dss.Client.Do(ctx, method, dss.Host+uri, body, scdussv1.UtmStrategicCoordinationScope)
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}

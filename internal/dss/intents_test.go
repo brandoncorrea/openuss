@@ -7,6 +7,7 @@ import (
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,18 +31,20 @@ func TestCreateIntentRequestParameters(t *testing.T) {
 		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
 		assert.Equal(t, token, r.Header.Get("Authorization"))
 		assert.Equal(t, "/dss/v1/operational_intent_references/"+string(entityId), r.RequestURI)
+		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	dss.CreateOperationalIntentReference(t.Context(), entityId, reference)
+	_, err := dss.CreateOperationalIntentReference(t.Context(), entityId, reference)
+	require.NoError(t, err)
 }
 
 func TestCreateIntentProducesErrorOnRequest(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
-	dss := newDss(t, nil)
+	dss := newDss(t, testutil.AssertNotCalledHandler(t))
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
 	result, err := dss.CreateOperationalIntentReference(nil, entityId, reference)
 	require.Zero(t, result)
-	require.ErrorContains(t, err, "dss: failed to create request: net/http:")
+	require.Error(t, err)
 }
 
 func TestCreateIntentRespondsWithBadJson(t *testing.T) {
@@ -75,6 +78,8 @@ func TestDeleteIntentRequestParameters(t *testing.T) {
 		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
 		assert.Equal(t, token, r.Header.Get("Authorization"))
 		assert.Equal(t, "/dss/v1/operational_intent_references/"+entityId+"/"+ovn, r.RequestURI)
+		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
 	})
-	dss.DeleteOperationalIntent(t.Context(), scdussv1.EntityID(entityId), scdussv1.EntityOVN(ovn))
+	_, err := dss.DeleteOperationalIntent(t.Context(), scdussv1.EntityID(entityId), scdussv1.EntityOVN(ovn))
+	require.NoError(t, err)
 }

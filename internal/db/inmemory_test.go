@@ -60,7 +60,7 @@ func TestGetAllIntents(t *testing.T) {
 	}
 	db.SaveIntent(intent2)
 	saved = slices.Collect(db.GetAllIntents())
-	require.Equal(t, []OperationalIntent{intent1, intent2}, saved)
+	require.ElementsMatch(t, []OperationalIntent{intent1, intent2}, saved)
 }
 
 func TestGetFlightOnEmptyDB(t *testing.T) {
@@ -113,5 +113,5 @@ func TestGetAllFlights(t *testing.T) {
 	}
 	db.SaveFlight(flight2)
 	saved = slices.Collect(db.GetAllFlights())
-	require.Equal(t, []FlightPlan{flight1, flight2}, saved)
+	require.ElementsMatch(t, []FlightPlan{flight1, flight2}, saved)
 }

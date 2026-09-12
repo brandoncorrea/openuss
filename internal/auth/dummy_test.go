@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/internal/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,18 +29,24 @@ func fakeServerClient(t *testing.T) *http.Client {
 	}).Client()
 }
 
+func newRequiredScope(scope string) api.RequiredScope {
+	return api.RequiredScope(scope)
+}
+
 func requestToken(t *testing.T, server *httptest.Server, subject string, audience string, scopes ...string) (string, error) {
 	t.Helper()
 	auth, err := NewDummyOAuth(server.URL+"/token", subject, server.Client())
 	require.NoError(t, err)
-	return auth.Token(t.Context(), audience, scopes...)
+	requiredScopes := util.Map(scopes, newRequiredScope)
+	return auth.Token(t.Context(), audience, requiredScopes...)
 }
 
 func newToken(t *testing.T, audience string, scopes ...string) (string, error) {
 	t.Helper()
 	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", fakeServerClient(t))
 	require.NoError(t, err)
-	return dummy.Token(t.Context(), audience, scopes...)
+	requiredScopes := util.Map(scopes, newRequiredScope)
+	return dummy.Token(t.Context(), audience, requiredScopes...)
 }
 
 func TestNewDummyOAuthWithMalformedEndpoint(t *testing.T) {

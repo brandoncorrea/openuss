@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,4 +34,10 @@ func (transport *BadTransport) RoundTrip(*http.Request) (*http.Response, error) 
 
 func NewErrorClient(err error) *http.Client {
 	return &http.Client{Transport: &BadTransport{Error: err}}
+}
+
+func AssertNotCalledHandler(t *testing.T) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		assert.Fail(t, "expected handler not to be called")
+	}
 }
