@@ -1,0 +1,24 @@
+unleash:
+  integration: true
+  output-statuses: "lc"
+  timeout-coefficient: 3
+  exclude-files:
+    - internal/api/
+    - internal/auth/inmemory.go
+    - internal/testutil/
+    - internal/logging/logtest/
+    - internal/dss/inmemory.go
+
+mutants:
+  invert-assignments:
+    enabled: true
+  invert-bitwise:
+    enabled: true
+  invert-bwassign:
+    enabled: true
+  invert-logical:
+    enabled: true
+  invert-loopctrl:
+    enabled: true
+  remove-self-assignments:
+    enabled: true
