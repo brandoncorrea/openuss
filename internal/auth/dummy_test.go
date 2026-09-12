@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/util"
 	"github.com/stretchr/testify/require"
 )
@@ -78,7 +79,7 @@ func TestNewDummyOAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "foo_subject", dummy.Subject)
 	require.Equal(t, "http://dummy/token", dummy.Endpoint.String())
-	require.Equal(t, http.DefaultClient, dummy.Client)
+	require.Equal(t, httpclient.DefaultTimeout, dummy.HTTP.HTTP.Timeout)
 }
 
 func TestNewDummyOAuthTrimsSubject(t *testing.T) {
@@ -91,7 +92,7 @@ func TestNewDummyOAuthOverridesClient(t *testing.T) {
 	client := fakeServerClient(t)
 	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", client)
 	require.NoError(t, err)
-	require.Equal(t, client, dummy.Client)
+	require.Equal(t, client, dummy.HTTP.HTTP)
 }
 
 func TestTokenWithNoAudience(t *testing.T) {
@@ -139,7 +140,7 @@ func TestServerReturnsNon2XX(t *testing.T) {
 	})
 	token, err := requestToken(t, server, "foo_subject", "foo_audience", "foo_scope")
 	require.Equal(t, "", token)
-	require.ErrorContains(t, err, "auth: token endpoint returned 400 Bad Request: oh no!\n")
+	require.ErrorContains(t, err, "auth: token endpoint returned 400: oh no!\n")
 }
 
 func TestServerReturnsInvalidJson(t *testing.T) {
@@ -159,7 +160,8 @@ func TestServerReturnsUnreadableBody(t *testing.T) {
 	})
 	token, err := requestToken(t, server, "foo_subject", "foo_audience", "foo_scope")
 	require.Equal(t, "", token)
-	require.ErrorContains(t, err, "auth: token endpoint returned 400 Bad Request: <unreadable body>")
+	require.ErrorContains(t, err, "auth: requesting token: httpclient: reading response from http://")
+	require.ErrorContains(t, err, "unexpected EOF")
 }
 
 func TestServerErrorBodyIsTruncated(t *testing.T) {

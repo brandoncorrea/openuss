@@ -9,34 +9,29 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/httpclient"
 )
-
-const DefaultTimeout = 10 * time.Second
 
 type Client struct {
 	TokenSource auth.TokenSource
-	HTTP        *http.Client
+	HTTP        *httpclient.Client
 }
 
-func New(tokenSource auth.TokenSource, httpClient *http.Client) *Client {
-	if httpClient == nil {
-		httpClient = &http.Client{Timeout: DefaultTimeout}
-	}
+func New(tokenSource auth.TokenSource, client *http.Client) *Client {
 	return &Client{
 		TokenSource: tokenSource,
-		HTTP:        httpClient,
+		HTTP:        httpclient.New(client),
 	}
 }
 
-func (client *Client) Get(ctx context.Context, endpoint string, scopes ...api.RequiredScope) (*http.Response, error) {
+func (client *Client) Get(ctx context.Context, endpoint string, scopes ...api.RequiredScope) (httpclient.Response, error) {
 	return client.Do(ctx, http.MethodGet, endpoint, nil, scopes...)
 }
 
-func (client *Client) Post(ctx context.Context, endpoint string, body any, scopes ...api.RequiredScope) (*http.Response, error) {
+func (client *Client) Post(ctx context.Context, endpoint string, body any, scopes ...api.RequiredScope) (httpclient.Response, error) {
 	return client.Do(ctx, http.MethodPost, endpoint, body, scopes...)
 }
 
@@ -46,31 +41,27 @@ func (client *Client) Do(
 	endpoint string,
 	body any,
 	scopes ...api.RequiredScope,
-) (*http.Response, error) {
+) (httpclient.Response, error) {
 	requestBody, err := encodeBody(body)
 	if err != nil {
-		return nil, err
+		return httpclient.Response{}, err
 	}
 	audience, err := audienceOf(endpoint)
 	if err != nil {
-		return nil, err
+		return httpclient.Response{}, err
 	}
 	request, err := http.NewRequestWithContext(ctx, method, endpoint, requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("utmclient: failed to create request: %w", err)
+		return httpclient.Response{}, fmt.Errorf("utmclient: failed to create request: %w", err)
 	}
 
 	token, err := client.TokenSource.Token(ctx, audience, scopes...)
 	if err != nil {
-		return nil, fmt.Errorf("utmclient: failed to acquire auth token: %w", err)
+		return httpclient.Response{}, fmt.Errorf("utmclient: failed to acquire auth token: %w", err)
 	}
 
 	request.Header.Add("Authorization", "Bearer "+token)
-	response, err := client.HTTP.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("utmclient: failed to make request: %w", err)
-	}
-	return response, nil
+	return client.HTTP.Do(request)
 }
 
 func audienceOf(endpoint string) (string, error) {

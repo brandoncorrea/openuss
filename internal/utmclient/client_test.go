@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,16 +21,9 @@ func newClient(t *testing.T, handler http.HandlerFunc) *Client {
 	return New(auth.NewInMemoryTokenSource(), server.Client())
 }
 
-func TestNewDefaultsToTimeoutClient(t *testing.T) {
+func TestNewDefaultsHTTPClient(t *testing.T) {
 	client := New(auth.NewInMemoryTokenSource(), nil)
-	require.NotNil(t, client.HTTP)
-	require.Equal(t, 10*time.Second, client.HTTP.Timeout)
-}
-
-func TestNewKeepsProvidedClient(t *testing.T) {
-	httpClient := &http.Client{}
-	client := New(auth.NewInMemoryTokenSource(), httpClient)
-	require.Same(t, httpClient, client.HTTP)
+	require.Equal(t, httpclient.DefaultTimeout, client.HTTP.HTTP.Timeout)
 }
 
 func requireGetSuccess(
@@ -117,21 +110,21 @@ func TestDoSendsNoBodyWhenNil(t *testing.T) {
 func TestDoFailsOnUnparsableUrl(t *testing.T) {
 	client := newClient(t, testutil.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "http://%zz")
-	require.Nil(t, response)
+	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to parse url")
 }
 
 func TestDoFailsOnUrlWithoutHostname(t *testing.T) {
 	client := newClient(t, testutil.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "/foo")
-	require.Nil(t, response)
+	require.Zero(t, response)
 	require.ErrorContains(t, err, `utmclient: url "/foo" has no hostname`)
 }
 
 func TestDoFailsToCreateNewRequest(t *testing.T) {
 	client := newClient(t, testutil.AssertNotCalledHandler(t))
 	response, err := client.Get(nil, "http://dss.example.com")
-	require.Nil(t, response)
+	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to create request: net/http:")
 }
 
@@ -139,7 +132,7 @@ func TestDoFailsToProduceToken(t *testing.T) {
 	client := newClient(t, testutil.AssertNotCalledHandler(t))
 	client.TokenSource = auth.NewInMemoryErrorTokenSource(errors.New("Boom!"))
 	response, err := client.Get(t.Context(), "http://dss.example.com")
-	require.Nil(t, response)
+	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to acquire auth token: Boom!")
 }
 
@@ -147,14 +140,36 @@ func TestDoFailsToMarshalBody(t *testing.T) {
 	client := newClient(t, testutil.AssertNotCalledHandler(t))
 	unmarshallable := make(chan int)
 	response, err := client.Post(t.Context(), "http://dss.example.com", unmarshallable)
-	require.Nil(t, response)
+	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to encode request body: json:")
 }
 
 func TestDoReturnsTransportError(t *testing.T) {
 	client := newClient(t, testutil.AssertNotCalledHandler(t))
-	client.HTTP = testutil.NewErrorClient(errors.New("Boom!"))
+	client.HTTP = httpclient.New(testutil.NewErrorClient(errors.New("Boom!")))
 	response, err := client.Get(t.Context(), "http://dss.example.com")
-	require.Nil(t, response)
-	require.ErrorContains(t, err, "utmclient: failed to make request: Get")
+	require.Zero(t, response)
+	require.ErrorContains(t, err, `Get "http://dss.example.com": Boom!`)
+}
+
+func TestDoReturnsStatusAndBufferedBody(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		api.WriteJSON(w, http.StatusConflict, map[string]string{
+			"foo": "bar",
+		})
+	}
+	response, err := newClient(t, handler).Get(t.Context(), "http://dss.example.com")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusConflict, response.StatusCode)
+	require.Equal(t, "{\"foo\":\"bar\"}\n", string(response.Body))
+}
+
+func TestDoReturnsEmptyBodyWhenNoneIsSent(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}
+	response, err := newClient(t, handler).Get(t.Context(), "http://dss.example.com")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, response.StatusCode)
+	require.Empty(t, response.Body)
 }

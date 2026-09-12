@@ -5,20 +5,20 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"slices"
 	"strings"
 
 	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/util"
 )
 
 type DummyOAuth struct {
 	Endpoint *url.URL
 	Subject  string
-	Client   *http.Client
+	HTTP     *httpclient.Client
 }
 
 const maxErrorDetail = 512
@@ -39,13 +39,10 @@ func NewDummyOAuth(endpoint string, subject string, client *http.Client) (*Dummy
 	if subject == "" {
 		return nil, errors.New("auth: subject is required")
 	}
-	if client == nil {
-		client = http.DefaultClient
-	}
 	return &DummyOAuth{
 		Endpoint: parsed,
 		Subject:  subject,
-		Client:   client,
+		HTTP:     httpclient.New(client),
 	}, nil
 }
 
@@ -76,16 +73,16 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, requiredScop
 	if err != nil {
 		return "", fmt.Errorf("auth: building token request: %w", err)
 	}
-	response, err := auth.Client.Do(request)
+	response, err := auth.HTTP.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("auth: requesting token: %w", err)
 	}
-	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("auth: token endpoint returned %s: %s", response.Status, responseBody(response.Body))
+		detail := errorDetail(response.Body)
+		return "", fmt.Errorf("auth: token endpoint returned %d: %s", response.StatusCode, detail)
 	}
 	var body DummyTokenResponse
-	if err := json.UnmarshalRead(response.Body, &body); err != nil {
+	if err := json.Unmarshal(response.Body, &body); err != nil {
 		return "", fmt.Errorf("auth: decoding token response: %w", err)
 	}
 	if util.IsBlank(body.AccessToken) {
@@ -94,10 +91,6 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, requiredScop
 	return body.AccessToken, nil
 }
 
-func responseBody(body io.Reader) string {
-	detail, err := io.ReadAll(io.LimitReader(body, maxErrorDetail))
-	if err != nil {
-		return "<unreadable body>"
-	}
-	return string(detail)
+func errorDetail(body []byte) string {
+	return string(body[:min(len(body), maxErrorDetail)])
 }

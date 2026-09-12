@@ -15,8 +15,8 @@ import (
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/flightplanning"
+	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/logging/logtest"
-	"bwawan.com/openuss/internal/utmclient"
 )
 
 func TestListenAddr(t *testing.T) {
@@ -129,7 +129,7 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	dss := handler.DSS.(*dss.DSS)
 	require.Equal(t, "http://dss.example.com:8080/blah", dss.Host)
 	require.Equal(t, dummy, dss.Client.TokenSource)
-	require.Equal(t, utmclient.DefaultTimeout, dss.Client.HTTP.Timeout)
+	require.Equal(t, httpclient.DefaultTimeout, dss.Client.HTTP.HTTP.Timeout)
 	require.Equal(t, db, handler.DB)
 	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
 }
