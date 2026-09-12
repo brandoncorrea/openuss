@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/flightplanning"
+	"bwawan.com/openuss/internal/httplog"
 	"bwawan.com/openuss/internal/logging"
 	"bwawan.com/openuss/internal/operations"
 	"bwawan.com/openuss/internal/router"
@@ -45,6 +47,7 @@ func loadEnv() error {
 
 func main() {
 	logger := logging.Default()
+	slog.SetDefault(logger)
 	err := loadEnv()
 	if err != nil {
 		logger.Error("failed to load env", slog.Any("error", err))
@@ -94,8 +97,10 @@ func newServer(logger *slog.Logger) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	router := newRouter(db, planning)
-	return server.Listen(ResolveAddress(), router, logger)
+	return server.Listen(
+		ResolveAddress(),
+		newHandler(db, planning, logger),
+		logger)
 }
 
 func newTokenSource() (auth.TokenSource, error) {
@@ -107,7 +112,12 @@ func newTokenSource() (auth.TokenSource, error) {
 	return auth.NewDummyOAuth(endpoint, sub, nil)
 }
 
-func newRouter(db db.DB, planning router.FlightPlanning) http.Handler {
+func newHandler(db db.DB, planning router.FlightPlanning, logger *slog.Logger) http.Handler {
+	routes := createRouter(db, planning)
+	return httplog.Middleware(logger)(routes)
+}
+
+func createRouter(db db.DB, planning router.FlightPlanning) http.Handler {
 	return router.New(
 		&versioning.Handler{},
 		planning,
@@ -135,10 +145,12 @@ func newUssAuthority(tokenSource auth.TokenSource) dss.USSAuthority {
 }
 
 func newRealDss(tokenSource auth.TokenSource) dss.USSAuthority {
+	baseUrl := os.Getenv("DSS_BASE_URL")
+	parsed, _ := url.Parse(strings.TrimSpace(baseUrl))
 	return &dss.DSS{
 		Client:      http.DefaultClient,
-		Host:        os.Getenv("DSS_BASE_URL"),
-		Audience:    "dss1.uss1.localutm",
+		Host:        baseUrl,
+		Audience:    parsed.Hostname(),
 		TokenSource: tokenSource,
 	}
 }
