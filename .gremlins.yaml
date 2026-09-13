@@ -5,9 +5,11 @@ unleash:
   exclude-files:
     - internal/api/
     - internal/auth/inmemory.go
-    - internal/testutil/
-    - internal/logging/logtest/
     - internal/dss/inmemory.go
+    - internal/dss/testhelper.go
+    - internal/logging/logtest/
+    - internal/peer/inmemory.go
+    - internal/testutil/
 
 mutants:
   invert-assignments:
