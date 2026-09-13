@@ -1,6 +1,7 @@
 package flightplanning
 
 import (
+	"context"
 	"encoding/json/v2"
 	"net/http"
 	"slices"
@@ -24,58 +25,127 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &body)
 
-	// TODO(gap): Validate flight_plan_id is a valid UUID
-	if isTooEager(body.FlightPlan) || hasEnded(body.FlightPlan) || hasAnyIntent(handler) {
-		writeRejection(w)
-	} else {
-		intent := scdussv1.PutOperationalIntentReferenceParameters{
-			Extents:    body.FlightPlan.BasicInformation.Area,
-			State:      scdussv1.OperationalIntentState_Accepted,
-			UssBaseUrl: handler.UssBaseUrl,
-		}
+	id := uuid.MustParse(r.PathValue("flight_plan_id"))
+	status, result := handler.putOrRejectFlight(r.Context(), id, body.FlightPlan)
+	api.WriteJSON(w, status, result)
+}
 
-		// TODO(gap): What happens if the DSS call results in an error?
-		result, _ := handler.DSS.CreateOperationalIntentReference(r.Context(), scdussv1.EntityID(uuid.New().String()), intent)
+func (handler *Handler) putOrRejectFlight(
+	ctx context.Context,
+	flightId uuid.UUID,
+	plan FlightPlan,
+) (int, any) {
+	if isInvalidFlight(plan) {
+		return rejectionResponse()
+	}
 
-		timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)
-		timeEnd, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeEnd.Value)
-		handler.DB.SaveIntent(db.OperationalIntent{
-			EntityID:        result.OperationalIntentReference.Id,
-			Manager:         result.OperationalIntentReference.Manager,
-			UssAvailability: result.OperationalIntentReference.UssAvailability,
-			Version:         result.OperationalIntentReference.Version,
-			Priority:        scdussv1.Priority(body.FlightPlan.Astm.Priority),
-			State:           result.OperationalIntentReference.State,
-			Ovn:             *result.OperationalIntentReference.Ovn,
-			TimeStart:       timeStart,
-			TimeEnd:         timeEnd,
-			UssBaseUrl:      result.OperationalIntentReference.UssBaseUrl,
-			SubscriptionId:  result.OperationalIntentReference.SubscriptionId,
-			Volumes:         intent.Extents,
-		})
-		handler.DB.SaveFlight(db.FlightPlan{
-			Id:       uuid.MustParse(r.PathValue("flight_plan_id")),
-			EntityID: result.OperationalIntentReference.Id,
-		})
-		api.WriteJSON(w, http.StatusOK, map[string]any{
-			"planning_result":    "Completed",
-			"flight_plan_status": "Planned",
-			// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
-		})
+	existingFlight := handler.DB.GetFlight(flightId)
+	entityId, ovn := handler.findIdsForExistingFlightPlan(existingFlight)
+
+	// TODO(gap): This assumes everything overlaps
+	if hasAnyOtherIntent(handler, entityId) {
+		return rejectionResponse()
+	}
+
+	putParams := handler.createPutRequestParams(plan)
+
+	// TODO(gap): What happens if the DSS call results in an error?
+	result, _ := handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)
+	intent := handler.saveOperationalIntent(plan, result)
+	handler.saveFlightPlan(flightId, intent)
+
+	return http.StatusOK, map[string]any{
+		"planning_result":    "Completed",
+		"flight_plan_status": flightPlanStatus(ovn),
+		// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
 	}
 }
 
-func writeRejection(w http.ResponseWriter) {
-	api.WriteJSON(w, http.StatusOK, map[string]any{
+func isInvalidFlight(plan FlightPlan) bool {
+	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
+	return isTooEager(plan) || hasEnded(plan)
+}
+
+func (handler *Handler) findIdsForExistingFlightPlan(flight *db.FlightPlan) (scdussv1.EntityID, *scdussv1.EntityOVN) {
+	if flight == nil {
+		return scdussv1.EntityID(uuid.New().String()), nil
+	}
+	intent := handler.DB.GetIntent(flight.EntityID)
+	return intent.EntityID, new(intent.Ovn)
+}
+
+func (handler *Handler) createPutRequestParams(plan FlightPlan) scdussv1.PutOperationalIntentReferenceParameters {
+	return scdussv1.PutOperationalIntentReferenceParameters{
+		Extents:    plan.BasicInformation.Area,
+		State:      flightPlanState(plan),
+		UssBaseUrl: handler.UssBaseUrl,
+		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
+			// TODO(gap): This probably needs to be a proper URL
+			UssBaseUrl: scdussv1.SubscriptionUssBaseURL("x"),
+		},
+	}
+}
+
+func flightPlanState(plan FlightPlan) scdussv1.OperationalIntentState {
+	if plan.BasicInformation.UsageState == "InUse" {
+		return scdussv1.OperationalIntentState_Activated
+	}
+	return scdussv1.OperationalIntentState_Accepted
+}
+
+func (handler *Handler) saveOperationalIntent(
+	plan FlightPlan,
+	result scdussv1.ChangeOperationalIntentReferenceResponse,
+) db.OperationalIntent {
+	timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)
+	timeEnd, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeEnd.Value)
+	intent := db.OperationalIntent{
+		EntityID:        result.OperationalIntentReference.Id,
+		Manager:         result.OperationalIntentReference.Manager,
+		UssAvailability: result.OperationalIntentReference.UssAvailability,
+		Version:         result.OperationalIntentReference.Version,
+		Priority:        scdussv1.Priority(plan.Astm.Priority),
+		State:           result.OperationalIntentReference.State,
+		Ovn:             *result.OperationalIntentReference.Ovn,
+		TimeStart:       timeStart,
+		TimeEnd:         timeEnd,
+		UssBaseUrl:      result.OperationalIntentReference.UssBaseUrl,
+		SubscriptionId:  result.OperationalIntentReference.SubscriptionId,
+		Volumes:         plan.BasicInformation.Area,
+	}
+	handler.DB.SaveIntent(intent)
+	return intent
+}
+
+func (handler *Handler) saveFlightPlan(id uuid.UUID, intent db.OperationalIntent) {
+	handler.DB.SaveFlight(db.FlightPlan{
+		Id:       id,
+		EntityID: intent.EntityID,
+	})
+}
+
+func flightPlanStatus(ovn *scdussv1.EntityOVN) string {
+	// TODO(gap): There's probably some input parameter this should be based off of
+	if ovn == nil {
+		return "Planned"
+	}
+	return "OkToFly"
+}
+
+func rejectionResponse() (int, map[string]any) {
+	return http.StatusOK, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
 		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
-	})
+	}
 }
 
-func hasAnyIntent(handler *Handler) bool {
-	return len(slices.Collect(handler.DB.GetAllIntents())) > 0
+func hasAnyOtherIntent(handler *Handler, entityId scdussv1.EntityID) bool {
+	intents := slices.Collect(handler.DB.GetAllIntents())
+	return slices.IndexFunc(intents, func(intent db.OperationalIntent) bool {
+		return intent.EntityID != entityId
+	}) >= 0
 }
 
 func isTooEager(flight FlightPlan) bool {

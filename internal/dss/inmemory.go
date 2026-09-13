@@ -9,29 +9,45 @@ import (
 )
 
 type InMemoryDSS struct {
-	Intents map[scdussv1.EntityID]scdussv1.OperationalIntent
+	Intents       map[scdussv1.EntityID]scdussv1.OperationalIntent
+	Subscriptions map[scdussv1.SubscriptionID]scdussv1.Subscription
 }
 
 func NewInMemoryDSS() *InMemoryDSS {
 	return &InMemoryDSS{
-		Intents: map[scdussv1.EntityID]scdussv1.OperationalIntent{},
+		Intents:       map[scdussv1.EntityID]scdussv1.OperationalIntent{},
+		Subscriptions: map[scdussv1.SubscriptionID]scdussv1.Subscription{},
 	}
 }
 
-func (dss *InMemoryDSS) CreateOperationalIntentReference(
+func (dss *InMemoryDSS) PutOperationalIntentReference(
 	ctx context.Context,
 	id scdussv1.EntityID,
+	ovn *scdussv1.EntityOVN,
 	params scdussv1.PutOperationalIntentReferenceParameters,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
 	mustHaveContext(ctx)
-	dss.Intents[id] = scdussv1.OperationalIntent{
+	return scdussv1.ChangeOperationalIntentReferenceResponse{
+		OperationalIntentReference: dss.createOperationalIntentReference(id, ovn, params),
+	}, nil
+}
+
+func (dss *InMemoryDSS) createOperationalIntentReference(
+	id scdussv1.EntityID,
+	ovn *scdussv1.EntityOVN,
+	params scdussv1.PutOperationalIntentReferenceParameters,
+) scdussv1.OperationalIntentReference {
+	if ovn == nil {
+		ovn = new(scdussv1.EntityOVN(uuid.New().String()))
+	}
+	intent := scdussv1.OperationalIntent{
 		Reference: scdussv1.OperationalIntentReference{
 			Id:              id,
 			Manager:         "InMemoryManager",
 			UssAvailability: scdussv1.UssAvailabilityState_Normal,
 			Version:         1,
 			State:           params.State,
-			Ovn:             new(scdussv1.EntityOVN(uuid.New().String())),
+			Ovn:             ovn,
 			TimeStart: scdussv1.Time{
 				Value:  params.Extents[0].TimeStart.Value,
 				Format: "RFC3339",
@@ -40,16 +56,33 @@ func (dss *InMemoryDSS) CreateOperationalIntentReference(
 				Value:  params.Extents[0].TimeEnd.Value,
 				Format: "RFC3339",
 			},
-			UssBaseUrl:     params.UssBaseUrl,
-			SubscriptionId: scdussv1.SubscriptionID(uuid.New().String()),
+			UssBaseUrl: params.UssBaseUrl,
 		},
 		Details: scdussv1.OperationalIntentDetails{
 			Volumes: &params.Extents,
 		},
 	}
-	return scdussv1.ChangeOperationalIntentReferenceResponse{
-		OperationalIntentReference: dss.Intents[id].Reference,
-	}, nil
+	intent.Reference.SubscriptionId = dss.createImplicitSubscription(params.NewSubscription, id)
+	dss.Intents[intent.Reference.Id] = intent
+	return intent.Reference
+}
+
+func (dss *InMemoryDSS) createImplicitSubscription(
+	implicit *scdussv1.ImplicitSubscriptionParameters,
+	dependentIntent scdussv1.EntityID,
+) scdussv1.SubscriptionID {
+	if implicit == nil {
+		return scdussv1.SubscriptionID("")
+	}
+	subscription := scdussv1.Subscription{
+		Id:                          scdussv1.SubscriptionID(uuid.New().String()),
+		UssBaseUrl:                  implicit.UssBaseUrl,
+		ImplicitSubscription:        new(true),
+		NotifyForOperationalIntents: new(true),
+		DependentOperationalIntents: &[]scdussv1.EntityID{dependentIntent},
+	}
+	dss.Subscriptions[subscription.Id] = subscription
+	return subscription.Id
 }
 
 func (dss *InMemoryDSS) DeleteOperationalIntent(

@@ -59,7 +59,7 @@ func newHandler() (*Handler, *dss.InMemoryDSS) {
 	return &handler, dss
 }
 
-func TestPutFlightPlanSucceeds(t *testing.T) {
+func TestCreateFlightPlanSucceeds(t *testing.T) {
 	flightId, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	request := putFlightPlanRequest(&flightId, flight)
@@ -87,6 +87,7 @@ func TestPutFlightPlanSucceeds(t *testing.T) {
 	require.EqualValues(t, 2, savedIntent.Priority)
 	require.Equal(t, scdussv1.OperationalIntentState_Accepted, savedIntent.State)
 	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionId)
+	require.EqualValues(t, "x", dss.Subscriptions[savedIntent.SubscriptionId].UssBaseUrl)
 
 	_, err := uuid.Parse(string(savedIntent.Ovn))
 	require.NoError(t, err)
@@ -101,6 +102,46 @@ func TestPutFlightPlanSucceeds(t *testing.T) {
 	require.Len(t, memoryDb.Flights, 1)
 	require.Contains(t, memoryDb.Flights, flightId)
 	require.Equal(t, dssIntent.Reference.Id, memoryDb.Flights[flightId].EntityID)
+}
+
+func TestUpdateFlightPlanSucceeds(t *testing.T) {
+	flightId, flight := newFlightParams()
+	createResponse := httptest.NewRecorder()
+	handler, dss := newHandler()
+	memoryDb := handler.DB.(*db.InMemoryDB)
+	handler.PutFlightPlan(createResponse, putFlightPlanRequest(&flightId, flight))
+
+	testutil.RequireJSON(t, createResponse, map[string]any{
+		"planning_result":    "Completed",
+		"flight_plan_status": "Planned",
+	})
+
+	flight1 := memoryDb.GetFlight(flightId)
+	intent1 := memoryDb.GetIntent(flight1.EntityID)
+
+	updateResponse := httptest.NewRecorder()
+	flight.FlightPlan.BasicInformation.Area[0].Volume.AltitudeLower.Value += 1
+	handler.PutFlightPlan(updateResponse, putFlightPlanRequest(&flightId, flight))
+
+	testutil.RequireJSON(t, updateResponse, map[string]any{
+		"planning_result":    "Completed",
+		"flight_plan_status": "OkToFly",
+	})
+
+	require.Len(t, dss.Intents, 1)
+	require.Len(t, memoryDb.Flights, 1)
+	require.Len(t, memoryDb.Intents, 1)
+
+	flight2 := memoryDb.GetFlight(flightId)
+	intent2 := memoryDb.GetIntent(flight2.EntityID)
+
+	require.Equal(t, flight1, flight2)
+	require.NotZero(t, intent1.Ovn)
+	require.Equal(t, intent1.Ovn, intent2.Ovn)
+
+	dssIntent := slices.Collect(maps.Values(dss.Intents))[0]
+	require.Equal(t, flight2.EntityID, dssIntent.Reference.Id)
+	require.Equal(t, flight.FlightPlan.BasicInformation.Area, *dssIntent.Details.Volumes)
 }
 
 func TestPutFlightPlanTooFarOut(t *testing.T) {
@@ -148,4 +189,21 @@ func TestPutRejectsWhenAnotherIntentExists(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
 	})
+}
+
+func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
+	response := httptest.NewRecorder()
+	flightId, flight := newFlightParams()
+	flight.FlightPlan.BasicInformation.UsageState = "InUse"
+	request := putFlightPlanRequest(&flightId, flight)
+	handler, dss := newHandler()
+	handler.PutFlightPlan(response, request)
+
+	testutil.RequireJSON(t, response, map[string]any{
+		"planning_result":    "Completed",
+		"flight_plan_status": "Planned",
+	})
+
+	dssIntent := slices.Collect(maps.Values(dss.Intents))[0]
+	require.Equal(t, scdussv1.OperationalIntentState_Activated, dssIntent.Reference.State)
 }

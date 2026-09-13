@@ -19,7 +19,7 @@ func TestCreateIntentRespondsWithChangeResult(t *testing.T) {
 		api.WriteJSON(w, http.StatusOK, response)
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	result, err := dss.CreateOperationalIntentReference(t.Context(), entityId, reference)
+	result, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
 	require.NoError(t, err)
 	require.Equal(t, response, result)
 }
@@ -34,7 +34,20 @@ func TestCreateIntentRequestParameters(t *testing.T) {
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	_, err := dss.CreateOperationalIntentReference(t.Context(), entityId, reference)
+	_, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
+	require.NoError(t, err)
+}
+
+func TestUpdatesIntentWithSuppliedOVN(t *testing.T) {
+	entityId := scdussv1.EntityID(uuid.New().String())
+	ovn := scdussv1.EntityOVN(uuid.New().String())
+	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+		uri := "/dss/v1/operational_intent_references/" + string(entityId) + "/" + string(ovn)
+		assert.Equal(t, uri, r.RequestURI)
+		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
+	})
+	reference := scdussv1.PutOperationalIntentReferenceParameters{}
+	_, err := dss.PutOperationalIntentReference(t.Context(), entityId, &ovn, reference)
 	require.NoError(t, err)
 }
 
@@ -42,7 +55,7 @@ func TestCreateIntentProducesErrorOnRequest(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
 	dss := newDss(t, testutil.AssertNotCalledHandler(t))
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	result, err := dss.CreateOperationalIntentReference(nil, entityId, reference)
+	result, err := dss.PutOperationalIntentReference(nil, entityId, nil, reference)
 	require.Zero(t, result)
 	require.Error(t, err)
 }
@@ -53,7 +66,7 @@ func TestCreateIntentRespondsWithBadJson(t *testing.T) {
 		api.WriteJSON(w, http.StatusOK, "{")
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	result, err := dss.CreateOperationalIntentReference(t.Context(), entityId, reference)
+	result, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
 	require.Zero(t, result)
 	require.Error(t, err)
 }
@@ -95,7 +108,7 @@ func TestCreateIntentRetriesWithPeerOvnsWhenKeyIsMissing(t *testing.T) {
 
 	entityId := scdussv1.EntityID(uuid.New().String())
 	params := scdussv1.PutOperationalIntentReferenceParameters{}
-	response, err := dss.CreateOperationalIntentReference(t.Context(), entityId, params)
+	response, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, params)
 	require.NoError(t, err)
 	require.Equal(t, entityId, response.OperationalIntentReference.Id)
 }

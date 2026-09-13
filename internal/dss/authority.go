@@ -7,6 +7,16 @@ import (
 )
 
 type USSAuthority interface {
-	CreateOperationalIntentReference(context.Context, scdussv1.EntityID, scdussv1.PutOperationalIntentReferenceParameters) (scdussv1.ChangeOperationalIntentReferenceResponse, error)
-	DeleteOperationalIntent(context.Context, scdussv1.EntityID, scdussv1.EntityOVN) (scdussv1.ChangeOperationalIntentReferenceResponse, error)
+	PutOperationalIntentReference(
+		context.Context,
+		scdussv1.EntityID,
+		*scdussv1.EntityOVN,
+		scdussv1.PutOperationalIntentReferenceParameters,
+	) (scdussv1.ChangeOperationalIntentReferenceResponse, error)
+
+	DeleteOperationalIntent(
+		context.Context,
+		scdussv1.EntityID,
+		scdussv1.EntityOVN,
+	) (scdussv1.ChangeOperationalIntentReferenceResponse, error)
 }

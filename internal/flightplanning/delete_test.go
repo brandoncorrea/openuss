@@ -25,7 +25,7 @@ func newFlightPlan(t *testing.T, handler *Handler) db.FlightPlan {
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: testutil.NewVolumes4D(),
 	}
-	result, _ := handler.DSS.CreateOperationalIntentReference(t.Context(), id, params)
+	result, _ := handler.DSS.PutOperationalIntentReference(t.Context(), id, nil, params)
 	reference := result.OperationalIntentReference
 	intent := db.OperationalIntent{
 		EntityID: reference.Id,
