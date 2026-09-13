@@ -41,11 +41,19 @@ After getting a _technically working_ USS shell that passes the test suite, then
 
 ## Development
 
-    make build    # Build the binary
-    make test     # Run unit tests
-    make image    # Build the docker image
-    make run      # Start a docker service
-    make stop     # Stop the docker service
+    make build              # Build the binary
+    make test               # Run unit tests
+    make image              # Build the docker image
+    make run                # Start a docker service
+    make stop               # Stop the docker service
+    make refresh-mocks      # Restart the local InterUSS ecosystem
+    make automated-tests    # Run the automated test suite
+
+### Resolving localutm
+
+The InterUSS project uses `*.localutm` for its services in Docker. Run this along with `make refresh-mocks` if you want to resolve these locally.
+
+    echo '127.0.0.1 scdsc.uss1.localutm scdsc.uss2.localutm dss1.uss1.localutm dss1.uss2.localutm' | sudo tee -a /etc/hosts
 
 ## License
 
