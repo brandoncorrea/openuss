@@ -35,7 +35,6 @@ func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// TODO(gap): What happens if the DSS call results in an error?
-		// TODO(next): DSS returns a conflict - should address the TODO(gap) above
 		result, _ := handler.DSS.CreateOperationalIntentReference(r.Context(), scdussv1.EntityID(uuid.New().String()), intent)
 
 		timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)

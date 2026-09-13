@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/internal/utmclient"
 )
@@ -12,6 +13,7 @@ import (
 type DSS struct {
 	Host   string
 	Client *utmclient.Client
+	Peer   peer.Client
 }
 
 func (dss *DSS) CreateOperationalIntentReference(
@@ -20,7 +22,20 @@ func (dss *DSS) CreateOperationalIntentReference(
 	reference scdussv1.PutOperationalIntentReferenceParameters,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
 	uri := "/dss/v1/operational_intent_references/" + string(entityId)
-	return requestIntentChange(dss, ctx, http.MethodPut, uri, reference)
+	response, err := dss.Client.Put(ctx, dss.Host+uri, reference, scdussv1.UtmStrategicCoordinationScope)
+	if err != nil {
+		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
+	}
+	if response.StatusCode != http.StatusConflict {
+		return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
+	}
+
+	conflict, _ := util.UnmarshalType[scdussv1.AirspaceConflictResponse](response.Body)
+	intent := (*conflict.MissingOperationalIntents)[0]
+	details, _ := dss.Peer.GetOperationalIntentDetails(ctx, intent.UssBaseUrl, intent.Id)
+	reference.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
+	response, _ = dss.Client.Put(ctx, dss.Host+uri, reference, scdussv1.UtmStrategicCoordinationScope)
+	return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
 }
 
 func (dss *DSS) DeleteOperationalIntent(
@@ -29,17 +44,7 @@ func (dss *DSS) DeleteOperationalIntent(
 	ovn scdussv1.EntityOVN,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
 	uri := "/dss/v1/operational_intent_references/" + string(entityId) + "/" + string(ovn)
-	return requestIntentChange(dss, ctx, http.MethodDelete, uri, nil)
-}
-
-func requestIntentChange(
-	dss *DSS,
-	ctx context.Context,
-	method string,
-	uri string,
-	body any,
-) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
-	response, err := dss.Client.Do(ctx, method, dss.Host+uri, body, scdussv1.UtmStrategicCoordinationScope)
+	response, err := dss.Client.Delete(ctx, dss.Host+uri, scdussv1.UtmStrategicCoordinationScope)
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}

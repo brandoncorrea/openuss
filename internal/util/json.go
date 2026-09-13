@@ -1,9 +1,18 @@
 package util
 
-import "encoding/json/v2"
+import (
+	"encoding/json/v2"
+	"io"
+)
 
-func UnmarshalType[T any](body []byte) (T, error) {
+func UnmarshalType[T any](data []byte) (T, error) {
 	var result T
-	err := json.Unmarshal(body, &result)
+	err := json.Unmarshal(data, &result)
+	return result, err
+}
+
+func UnmarshalReadType[T any](reader io.Reader) (T, error) {
+	var result T
+	err := json.UnmarshalRead(reader, &result)
 	return result, err
 }

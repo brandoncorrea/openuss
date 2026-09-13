@@ -18,6 +18,7 @@ import (
 	"bwawan.com/openuss/internal/httplog"
 	"bwawan.com/openuss/internal/logging"
 	"bwawan.com/openuss/internal/operations"
+	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
@@ -145,9 +146,11 @@ func newUssAuthority(tokenSource auth.TokenSource) dss.USSAuthority {
 }
 
 func newRealDss(tokenSource auth.TokenSource) dss.USSAuthority {
+	client := utmclient.New(tokenSource, nil)
 	return &dss.DSS{
 		Host:   os.Getenv("DSS_BASE_URL"),
-		Client: utmclient.New(tokenSource, nil),
+		Client: client,
+		Peer:   peer.New(client),
 	}
 }
 

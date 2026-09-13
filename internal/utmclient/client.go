@@ -31,8 +31,16 @@ func (client *Client) Get(ctx context.Context, endpoint string, scopes ...api.Re
 	return client.Do(ctx, http.MethodGet, endpoint, nil, scopes...)
 }
 
+func (client *Client) Delete(ctx context.Context, endpoint string, scopes ...api.RequiredScope) (httpclient.Response, error) {
+	return client.Do(ctx, http.MethodDelete, endpoint, nil, scopes...)
+}
+
 func (client *Client) Post(ctx context.Context, endpoint string, body any, scopes ...api.RequiredScope) (httpclient.Response, error) {
 	return client.Do(ctx, http.MethodPost, endpoint, body, scopes...)
+}
+
+func (client *Client) Put(ctx context.Context, endpoint string, body any, scopes ...api.RequiredScope) (httpclient.Response, error) {
+	return client.Do(ctx, http.MethodPut, endpoint, body, scopes...)
 }
 
 func (client *Client) Do(

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,15 +11,14 @@ import (
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/httpclient"
+	"bwawan.com/openuss/internal/testutil"
 	"bwawan.com/openuss/internal/util"
 	"github.com/stretchr/testify/require"
 )
 
 func newFakeServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(handler))
-	t.Cleanup(server.Close)
-	return server
+	return httptest.NewTestServer(t, handler)
 }
 
 func fakeServerClient(t *testing.T) *http.Client {
@@ -126,12 +126,13 @@ func TestScopeIsBlank(t *testing.T) {
 }
 
 func TestServerRequestErrors(t *testing.T) {
-	server := newFakeServer(t, func(w http.ResponseWriter, r *http.Request) {})
-	auth, err := NewDummyOAuth("http://error/token", "foo_subject", server.Client())
+	transportErr := errors.New("connection refused")
+	client := testutil.NewErrorClient(transportErr)
+	auth, err := NewDummyOAuth("http://auth.localutm/token", "foo_subject", client)
 	require.NoError(t, err)
 	token, err := auth.Token(t.Context(), "foo_audience", "foo_scope")
 	require.Equal(t, "", token)
-	require.ErrorContains(t, err, "auth: requesting token: Get \"http://error/token")
+	require.ErrorIs(t, err, transportErr)
 }
 
 func TestServerReturnsNon2XX(t *testing.T) {
