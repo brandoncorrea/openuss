@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
-	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/internal/utmclient"
 )
@@ -13,7 +12,22 @@ import (
 type DSS struct {
 	Host   string
 	Client *utmclient.Client
-	Peer   peer.Client
+}
+
+type AirspaceConflictError struct {
+	Message                   *string
+	MissingOperationalIntents *[]scdussv1.OperationalIntentReference
+}
+
+func (err AirspaceConflictError) Error() string {
+	return *err.Message
+}
+
+func NewAirspaceConflictError(response scdussv1.AirspaceConflictResponse) AirspaceConflictError {
+	return AirspaceConflictError{
+		Message:                   response.Message,
+		MissingOperationalIntents: response.MissingOperationalIntents,
+	}
 }
 
 func (dss *DSS) PutOperationalIntentReference(
@@ -32,11 +46,7 @@ func (dss *DSS) PutOperationalIntentReference(
 	}
 
 	conflict, _ := util.UnmarshalType[scdussv1.AirspaceConflictResponse](response.Body)
-	intent := (*conflict.MissingOperationalIntents)[0]
-	details, _ := dss.Peer.GetOperationalIntentDetails(ctx, intent.UssBaseUrl, intent.Id)
-	reference.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
-	response, _ = dss.Client.Put(ctx, endpoint, reference, scdussv1.UtmStrategicCoordinationScope)
-	return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
+	return scdussv1.ChangeOperationalIntentReferenceResponse{}, NewAirspaceConflictError(conflict)
 }
 
 func (dss *DSS) DeleteOperationalIntent(

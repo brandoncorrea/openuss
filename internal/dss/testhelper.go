@@ -1,16 +1,17 @@
 package dss
 
 import (
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
+	"uuid"
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/auth"
-	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/internal/utmclient"
 )
@@ -22,67 +23,77 @@ func newDss(t *testing.T, handler http.HandlerFunc) *DSS {
 	return &DSS{
 		Host:   fakeDssHost,
 		Client: utmclient.New(auth.NewInMemoryTokenSource(), server.Client()),
-		Peer:   peer.NewInMemoryPeer([]scdussv1.OperationalIntentReference{}),
 	}
 }
 
-func newConflictingDss(t *testing.T, peers []scdussv1.OperationalIntentReference) *DSS {
-	peer := peer.NewInMemoryPeer(peers)
-	dss := newDss(t, newConflictHandler(peer))
-	dss.Peer = peer
-	return dss
-}
+func NewPeerHandler(peers []scdussv1.OperationalIntent) http.HandlerFunc {
+	handleDss := dssHandlerFromPeers(peers)
+	handleUss := ussHandlerFromPeers(peers)
 
-func newConflictHandler(peer *peer.InMemoryPeer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(fakeDssHost, r.Host) {
-			handleDssConflict(w, r, peer)
+		if r.Host == "dss.localutm" {
+			handleDss(w, r)
 		} else {
-			handleGetUssIntent(w, r, peer)
+			handleUss(w, r)
 		}
 	}
 }
 
-func handleDssConflict(w http.ResponseWriter, r *http.Request, peer *peer.InMemoryPeer) {
-	params, err := util.UnmarshalReadType[scdussv1.PutOperationalIntentReferenceParameters](r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if hasAllOvns(params.Key, peer.References) {
-		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{
-			OperationalIntentReference: scdussv1.OperationalIntentReference{
-				Id: parseEntityId(r),
-			},
+func ussHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		index := slices.IndexFunc(peers, func(intent scdussv1.OperationalIntent) bool {
+			host := strings.TrimLeft(string(intent.Reference.UssBaseUrl), "http://")
+			return host == r.Host && string(intent.Reference.Id) == uriEntityId(r.RequestURI)
 		})
-	} else {
-		api.WriteJSON(w, http.StatusConflict, scdussv1.AirspaceConflictResponse{
-			MissingOperationalIntents: new(slices.Clone(peer.References)),
+
+		if index >= 0 {
+			api.WriteJSON(w, http.StatusOK, scdussv1.GetOperationalIntentDetailsResponse{
+				OperationalIntent: peers[index],
+			})
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+}
+
+func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
+	references := util.Map(peers, func(intent scdussv1.OperationalIntent) scdussv1.OperationalIntentReference {
+		return intent.Reference
+	})
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var putParams scdussv1.PutOperationalIntentReferenceParameters
+		json.UnmarshalRead(r.Body, &putParams)
+
+		key := []scdussv1.EntityOVN{}
+		if putParams.Key != nil {
+			key = *putParams.Key
+		}
+		missing := slices.DeleteFunc(references, func(reference scdussv1.OperationalIntentReference) bool {
+			return slices.Contains(key, *reference.Ovn)
 		})
+
+		if len(missing) > 0 {
+			masked := util.Map(missing, func(reference scdussv1.OperationalIntentReference) scdussv1.OperationalIntentReference {
+				reference.Ovn = new(scdussv1.EntityOVN("blah"))
+				return reference
+			})
+			api.WriteJSON(w, http.StatusConflict, scdussv1.AirspaceConflictResponse{
+				MissingOperationalIntents: &masked,
+			})
+		} else {
+			api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{
+				OperationalIntentReference: scdussv1.OperationalIntentReference{
+					Id:         scdussv1.EntityID(uriEntityId(r.RequestURI)),
+					Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
+					UssBaseUrl: putParams.UssBaseUrl,
+				},
+			})
+		}
 	}
 }
 
-func handleGetUssIntent(w http.ResponseWriter, r *http.Request, peer *peer.InMemoryPeer) {
-	baseUrl := scdussv1.OperationalIntentUssBaseURL("http://" + r.Host)
-	result, err := peer.GetOperationalIntentDetails(r.Context(), baseUrl, parseEntityId(r))
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		api.WriteJSON(w, http.StatusOK, result)
-	}
-}
-
-func hasAllOvns(key *scdussv1.Key, peers []scdussv1.OperationalIntentReference) bool {
-	ovns := util.Map(peers, getIntentOvn)
-	return key != nil && slices.Equal(*key, ovns)
-}
-
-func getIntentOvn(intent scdussv1.OperationalIntentReference) scdussv1.EntityOVN {
-	return *intent.Ovn
-}
-
-func parseEntityId(r *http.Request) scdussv1.EntityID {
-	uriParts := strings.Split(r.RequestURI, "/")
-	return scdussv1.EntityID(uriParts[len(uriParts)-1])
+func uriEntityId(uri string) string {
+	parts := strings.Split(uri, "/")
+	return parts[len(parts)-1]
 }

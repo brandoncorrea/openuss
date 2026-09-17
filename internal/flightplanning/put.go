@@ -3,6 +3,7 @@ package flightplanning
 import (
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
+	"bwawan.com/openuss/internal/dss"
 )
 
 type PutFlightPlanBody struct {
@@ -49,8 +51,18 @@ func (handler *Handler) putOrRejectFlight(
 
 	putParams := handler.createPutRequestParams(plan)
 
-	// TODO(gap): What happens if the DSS call results in an error?
-	result, _ := handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)
+	// TODO(gap): What happens if the DSS call results in a non-conflict error?
+	result, err := handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)
+	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
+		missing := (*conflict.MissingOperationalIntents)[0]
+		details, _ := handler.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
+		if isLowerPriority(details) {
+			return rejectionResponse()
+		}
+		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
+		result, err = handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)
+	}
+
 	intent := handler.saveOperationalIntent(plan, result)
 	handler.saveFlightPlan(flightId, intent)
 
@@ -59,6 +71,11 @@ func (handler *Handler) putOrRejectFlight(
 		"flight_plan_status": flightPlanStatus(ovn),
 		// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
 	}
+}
+
+func isLowerPriority(details scdussv1.GetOperationalIntentDetailsResponse) bool {
+	return details.OperationalIntent.Details.Priority != nil &&
+		*details.OperationalIntent.Details.Priority == 100
 }
 
 func isInvalidFlight(plan FlightPlan) bool {

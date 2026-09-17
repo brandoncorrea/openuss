@@ -12,9 +12,12 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
+	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/utmclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -206,4 +209,70 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 
 	dssIntent := slices.Collect(maps.Values(dss.Intents))[0]
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, dssIntent.Reference.State)
+}
+
+func TestCreateIntentRetriesWithPeerOvnsWhenKeyIsMissing(t *testing.T) {
+	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
+		{
+			Reference: scdussv1.OperationalIntentReference{
+				Id:         scdussv1.EntityID(uuid.New().String()),
+				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
+				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
+			},
+		},
+	})
+
+	flightId, flight := newFlightParams()
+	response := httptest.NewRecorder()
+	request := putFlightPlanRequest(&flightId, flight)
+	handler.PutFlightPlan(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	require.Len(t, slices.Collect(handler.DB.GetAllIntents()), 1)
+	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
+}
+
+func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
+	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
+		{
+			Reference: scdussv1.OperationalIntentReference{
+				Id:         scdussv1.EntityID(uuid.New().String()),
+				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
+				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
+			},
+			Details: scdussv1.OperationalIntentDetails{
+				Priority: new(scdussv1.Priority(100)),
+			},
+		},
+	})
+
+	flightId, flight := newFlightParams()
+	response := httptest.NewRecorder()
+	request := putFlightPlanRequest(&flightId, flight)
+	handler.PutFlightPlan(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	testutil.RequireJSON(t, response, map[string]any{
+		"activity_result":    "Rejected",
+		"planning_result":    "Rejected",
+		"flight_plan_status": "NotPlanned",
+	})
+	require.Empty(t, slices.Collect(handler.DB.GetAllIntents()))
+	require.Empty(t, slices.Collect(handler.DB.GetAllFlights()))
+}
+
+func newHandlerFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *Handler {
+	client := utmclient.New(
+		auth.NewInMemoryTokenSource(),
+		httptest.NewTestServer(t, dss.NewPeerHandler(peers)).Client(),
+	)
+	return &Handler{
+		DSS: &dss.DSS{
+			Host:   "https://dss.localutm",
+			Client: client,
+		},
+		Peer:       peer.New(client),
+		DB:         db.NewInMemoryDB(),
+		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://openuss.localutm"),
+	}
 }

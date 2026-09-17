@@ -131,26 +131,28 @@ func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) (*flightplanning
 	if util.IsBlank(ussBaseUrl) {
 		return nil, errors.New("USS_BASE_URL is required")
 	}
+
+	client := utmclient.New(tokenSource, nil)
+	peer := peer.New(client)
 	return &flightplanning.Handler{
-		DSS:        newUssAuthority(tokenSource),
+		DSS:        newUssAuthority(client),
 		DB:         db,
+		Peer:       peer,
 		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL(ussBaseUrl),
 	}, nil
 }
 
-func newUssAuthority(tokenSource auth.TokenSource) dss.USSAuthority {
+func newUssAuthority(client *utmclient.Client) dss.USSAuthority {
 	if os.Getenv("DSS_IMPL") == "memory" {
 		return dss.NewInMemoryDSS()
 	}
-	return newRealDss(tokenSource)
+	return newRealDss(client)
 }
 
-func newRealDss(tokenSource auth.TokenSource) dss.USSAuthority {
-	client := utmclient.New(tokenSource, nil)
+func newRealDss(client *utmclient.Client) dss.USSAuthority {
 	return &dss.DSS{
 		Host:   os.Getenv("DSS_BASE_URL"),
 		Client: client,
-		Peer:   peer.New(client),
 	}
 }
 

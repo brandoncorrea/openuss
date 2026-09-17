@@ -96,19 +96,3 @@ func TestDeleteIntentRequestParameters(t *testing.T) {
 	_, err := dss.DeleteOperationalIntent(t.Context(), scdussv1.EntityID(entityId), scdussv1.EntityOVN(ovn))
 	require.NoError(t, err)
 }
-
-func TestCreateIntentRetriesWithPeerOvnsWhenKeyIsMissing(t *testing.T) {
-	dss := newConflictingDss(t, []scdussv1.OperationalIntentReference{
-		{
-			Id:         scdussv1.EntityID(uuid.New().String()),
-			Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-			UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
-		},
-	})
-
-	entityId := scdussv1.EntityID(uuid.New().String())
-	params := scdussv1.PutOperationalIntentReferenceParameters{}
-	response, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, params)
-	require.NoError(t, err)
-	require.Equal(t, entityId, response.OperationalIntentReference.Id)
-}
