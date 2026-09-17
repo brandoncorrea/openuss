@@ -57,7 +57,17 @@ func (handler *Handler) putOrRejectFlight(
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := handler.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
 		if isLowerPriority(details) {
-			return rejectionResponse()
+			// TODO(gap): This check is probably wrong
+			status := "NotPlanned"
+			if ovn != nil {
+				status = "Planned"
+			}
+			return http.StatusOK, map[string]any{
+				"activity_result":    "Rejected",
+				"planning_result":    "Rejected",
+				"flight_plan_status": status,
+				// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
+			}
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
 		result, err = handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)

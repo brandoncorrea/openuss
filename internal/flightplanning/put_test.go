@@ -261,6 +261,47 @@ func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
 	require.Empty(t, slices.Collect(handler.DB.GetAllFlights()))
 }
 
+func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
+	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
+		{
+			Reference: scdussv1.OperationalIntentReference{
+				Id:         scdussv1.EntityID(uuid.New().String()),
+				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
+				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
+			},
+			Details: scdussv1.OperationalIntentDetails{
+				Priority: new(scdussv1.Priority(100)),
+			},
+		},
+	})
+
+	flightId, flightParams := newFlightParams()
+
+	intent := db.OperationalIntent{
+		EntityID: scdussv1.EntityID(uuid.New().String()),
+		Ovn:      scdussv1.EntityOVN(uuid.New().String()),
+	}
+	flight := db.FlightPlan{
+		Id:       flightId,
+		EntityID: intent.EntityID,
+	}
+	handler.DB.SaveIntent(intent)
+	handler.DB.SaveFlight(flight)
+
+	response := httptest.NewRecorder()
+	request := putFlightPlanRequest(&flightId, flightParams)
+	handler.PutFlightPlan(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	testutil.RequireJSON(t, response, map[string]any{
+		"activity_result":    "Rejected",
+		"planning_result":    "Rejected",
+		"flight_plan_status": "Planned",
+	})
+	require.ElementsMatch(t, []db.OperationalIntent{intent}, slices.Collect(handler.DB.GetAllIntents()))
+	require.ElementsMatch(t, []db.FlightPlan{flight}, slices.Collect(handler.DB.GetAllFlights()))
+}
+
 func newHandlerFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *Handler {
 	client := utmclient.New(
 		auth.NewInMemoryTokenSource(),
