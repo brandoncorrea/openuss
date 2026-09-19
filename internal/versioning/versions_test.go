@@ -1,17 +1,17 @@
-package versioning
+package versioning_test
 
 import (
 	"net/http/httptest"
 	"testing"
 
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/versioning"
+	"bwawan.com/openuss/internal/wiretest"
 )
 
 func TestGetVersion(t *testing.T) {
 	response := httptest.NewRecorder()
-	director := &Handler{}
-	director.GetVersion(response, nil)
-	testutil.RequireJSON(t, response, map[string]any{
+	versioning.New().GetVersion(response, nil)
+	wiretest.RequireJSON(t, response, map[string]any{
 		"system_identity": "astm.f3548.v21",
 		"system_version":  "blah",
 	})

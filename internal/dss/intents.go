@@ -14,6 +14,13 @@ type DSS struct {
 	Client *utmclient.Client
 }
 
+func New(host string, client *utmclient.Client) *DSS {
+	return &DSS{
+		Host:   host,
+		Client: client,
+	}
+}
+
 type AirspaceConflictError struct {
 	Message                   *string
 	MissingOperationalIntents *[]scdussv1.OperationalIntentReference

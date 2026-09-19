@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"slices"
@@ -6,112 +6,113 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/db"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetIntentOnEmptyDB(t *testing.T) {
-	db := NewInMemoryDB()
+	store := db.NewInMemoryDB()
 	id := scdussv1.EntityID(uuid.New().String())
-	require.Nil(t, db.GetIntent(id))
+	require.Nil(t, store.GetIntent(id))
 }
 
 func TestDeleteIntentOnEmptyDB(t *testing.T) {
-	db := NewInMemoryDB()
+	store := db.NewInMemoryDB()
 	id := scdussv1.EntityID(uuid.New().String())
 	require.NotPanics(t, func() {
-		db.DeleteIntent(id)
+		store.DeleteIntent(id)
 	})
 }
 
 func TestGetSavedIntent(t *testing.T) {
-	db := NewInMemoryDB()
-	intent := OperationalIntent{
+	store := db.NewInMemoryDB()
+	intent := db.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
-	require.NoError(t, db.SaveIntent(intent))
-	require.Equal(t, intent, *(db.GetIntent(intent.EntityID)))
+	require.NoError(t, store.SaveIntent(intent))
+	require.Equal(t, intent, *(store.GetIntent(intent.EntityID)))
 }
 
 func TestDeleteSavedIntent(t *testing.T) {
-	db := NewInMemoryDB()
+	store := db.NewInMemoryDB()
 	id := scdussv1.EntityID(uuid.New().String())
-	intent := OperationalIntent{
+	intent := db.OperationalIntent{
 		EntityID: id,
 	}
-	require.NoError(t, db.SaveIntent(intent))
-	require.Equal(t, intent, *db.GetIntent(id))
-	db.DeleteIntent(id)
-	require.Nil(t, db.GetIntent(id))
+	require.NoError(t, store.SaveIntent(intent))
+	require.Equal(t, intent, *store.GetIntent(id))
+	store.DeleteIntent(id)
+	require.Nil(t, store.GetIntent(id))
 }
 
 func TestGetAllIntents(t *testing.T) {
-	db := NewInMemoryDB()
-	require.Empty(t, slices.Collect(db.GetAllIntents()))
+	store := db.NewInMemoryDB()
+	require.Empty(t, slices.Collect(store.GetAllIntents()))
 
-	intent1 := OperationalIntent{
+	intent1 := db.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
-	db.SaveIntent(intent1)
-	saved := slices.Collect(db.GetAllIntents())
-	require.Equal(t, []OperationalIntent{intent1}, saved)
+	store.SaveIntent(intent1)
+	saved := slices.Collect(store.GetAllIntents())
+	require.Equal(t, []db.OperationalIntent{intent1}, saved)
 
-	intent2 := OperationalIntent{
+	intent2 := db.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
-	db.SaveIntent(intent2)
-	saved = slices.Collect(db.GetAllIntents())
-	require.ElementsMatch(t, []OperationalIntent{intent1, intent2}, saved)
+	store.SaveIntent(intent2)
+	saved = slices.Collect(store.GetAllIntents())
+	require.ElementsMatch(t, []db.OperationalIntent{intent1, intent2}, saved)
 }
 
 func TestGetFlightOnEmptyDB(t *testing.T) {
-	db := NewInMemoryDB()
-	require.Nil(t, db.GetFlight(uuid.New()))
+	store := db.NewInMemoryDB()
+	require.Nil(t, store.GetFlight(uuid.New()))
 }
 
 func TestDeleteFlightOnEmptyDB(t *testing.T) {
-	db := NewInMemoryDB()
+	store := db.NewInMemoryDB()
 	require.NotPanics(t, func() {
-		db.DeleteFlight(uuid.New())
+		store.DeleteFlight(uuid.New())
 	})
 }
 
 func TestGetSavedFlight(t *testing.T) {
-	db := NewInMemoryDB()
-	flight := FlightPlan{
+	store := db.NewInMemoryDB()
+	flight := db.FlightPlan{
 		Id: uuid.New(),
 	}
-	require.NoError(t, db.SaveFlight(flight))
-	require.Equal(t, flight, *(db.GetFlight(flight.Id)))
+	require.NoError(t, store.SaveFlight(flight))
+	require.Equal(t, flight, *(store.GetFlight(flight.Id)))
 }
 
 func TestDeleteSavedFlight(t *testing.T) {
-	db := NewInMemoryDB()
-	flight := FlightPlan{
+	store := db.NewInMemoryDB()
+	flight := db.FlightPlan{
 		Id: uuid.New(),
 	}
-	require.NoError(t, db.SaveFlight(flight))
-	require.Equal(t, flight, *db.GetFlight(flight.Id))
-	db.DeleteFlight(flight.Id)
-	require.Nil(t, db.GetFlight(flight.Id))
+	require.NoError(t, store.SaveFlight(flight))
+	require.Equal(t, flight, *store.GetFlight(flight.Id))
+	store.DeleteFlight(flight.Id)
+	require.Nil(t, store.GetFlight(flight.Id))
 }
 
 func TestGetAllFlights(t *testing.T) {
-	db := NewInMemoryDB()
-	require.Empty(t, slices.Collect(db.GetAllFlights()))
+	store := db.NewInMemoryDB()
+	require.Empty(t, slices.Collect(store.GetAllFlights()))
 
-	flight1 := FlightPlan{
+	flight1 := db.FlightPlan{
 		Id:       uuid.New(),
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
-	db.SaveFlight(flight1)
-	saved := slices.Collect(db.GetAllFlights())
-	require.Equal(t, []FlightPlan{flight1}, saved)
+	store.SaveFlight(flight1)
+	saved := slices.Collect(store.GetAllFlights())
+	require.Equal(t, []db.FlightPlan{flight1}, saved)
 
-	flight2 := FlightPlan{
+	flight2 := db.FlightPlan{
 		Id:       uuid.New(),
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
-	db.SaveFlight(flight2)
-	saved = slices.Collect(db.GetAllFlights())
-	require.ElementsMatch(t, []FlightPlan{flight1, flight2}, saved)
+	store.SaveFlight(flight2)
+	saved = slices.Collect(store.GetAllFlights())
+	require.ElementsMatch(t, []db.FlightPlan{flight1, flight2}, saved)
 }

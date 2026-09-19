@@ -13,3 +13,17 @@ type Handler struct {
 	DB         db.DB
 	UssBaseUrl scdussv1.OperationalIntentUssBaseURL
 }
+
+func New(
+	dss dss.USSAuthority,
+	peer peer.Client,
+	db db.DB,
+	baseUrl string,
+) *Handler {
+	return &Handler{
+		DSS:        dss,
+		Peer:       peer,
+		DB:         db,
+		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL(baseUrl),
+	}
+}

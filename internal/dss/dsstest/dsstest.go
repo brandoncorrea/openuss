@@ -1,4 +1,4 @@
-package dss
+package dsstest
 
 import (
 	"encoding/json/v2"
@@ -12,18 +12,16 @@ import (
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/internal/utmclient"
 )
 
-var fakeDssHost = "http://dss.example.com"
-
-func newDss(t *testing.T, handler http.HandlerFunc) *DSS {
+func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.DSS {
+	t.Helper()
 	server := httptest.NewTestServer(t, http.HandlerFunc(handler))
-	return &DSS{
-		Host:   fakeDssHost,
-		Client: utmclient.New(auth.NewInMemoryTokenSource(), server.Client()),
-	}
+	client := utmclient.New(auth.NewInMemoryTokenSource(), server.Client())
+	return dss.New("http://dss.example.com", client)
 }
 
 func NewPeerHandler(peers []scdussv1.OperationalIntent) http.HandlerFunc {
@@ -42,7 +40,7 @@ func NewPeerHandler(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 func ussHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		index := slices.IndexFunc(peers, func(intent scdussv1.OperationalIntent) bool {
-			host := strings.TrimLeft(string(intent.Reference.UssBaseUrl), "http://")
+			host := strings.TrimPrefix(string(intent.Reference.UssBaseUrl), "http://")
 			return host == r.Host && string(intent.Reference.Id) == uriEntityId(r.RequestURI)
 		})
 
@@ -69,7 +67,7 @@ func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 		if putParams.Key != nil {
 			key = *putParams.Key
 		}
-		missing := slices.DeleteFunc(references, func(reference scdussv1.OperationalIntentReference) bool {
+		missing := util.Remove(references, func(reference scdussv1.OperationalIntentReference) bool {
 			return slices.Contains(key, *reference.Ovn)
 		})
 

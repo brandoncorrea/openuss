@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"context"
@@ -10,9 +10,10 @@ import (
 	"testing"
 
 	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/httpclient"
-	"bwawan.com/openuss/internal/testutil"
 	"bwawan.com/openuss/internal/util"
+	"bwawan.com/openuss/internal/wiretest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,46 +37,46 @@ func newRequiredScope(scope string) api.RequiredScope {
 
 func requestToken(t *testing.T, server *httptest.Server, subject string, audience string, scopes ...string) (string, error) {
 	t.Helper()
-	auth, err := NewDummyOAuth(server.URL+"/token", subject, server.Client())
+	tokens, err := auth.NewDummyOAuth(server.URL+"/token", subject, server.Client())
 	require.NoError(t, err)
 	requiredScopes := util.Map(scopes, newRequiredScope)
-	return auth.Token(t.Context(), audience, requiredScopes...)
+	return tokens.Token(t.Context(), audience, requiredScopes...)
 }
 
 func newToken(t *testing.T, audience string, scopes ...string) (string, error) {
 	t.Helper()
-	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", fakeServerClient(t))
+	dummy, err := auth.NewDummyOAuth("http://dummy/token", "foo_subject", fakeServerClient(t))
 	require.NoError(t, err)
 	requiredScopes := util.Map(scopes, newRequiredScope)
 	return dummy.Token(t.Context(), audience, requiredScopes...)
 }
 
 func TestNewDummyOAuthWithMalformedEndpoint(t *testing.T) {
-	dummy, err := NewDummyOAuth("\t", "foo_subject", nil)
+	dummy, err := auth.NewDummyOAuth("\t", "foo_subject", nil)
 	require.Nil(t, dummy)
 	require.ErrorContains(t, err, `auth: parsing token endpoint "\t": parse`)
 }
 
 func TestNewDummyOAuthEndpointMustBeAbsolute(t *testing.T) {
-	dummy, err := NewDummyOAuth("/oauth/token", "foo_subject", nil)
+	dummy, err := auth.NewDummyOAuth("/oauth/token", "foo_subject", nil)
 	require.Nil(t, dummy)
 	require.ErrorContains(t, err, `auth: token endpoint "/oauth/token" is not an absolute URL`)
 }
 
 func TestNewDummyOAuthEndpointMustHaveHost(t *testing.T) {
-	dummy, err := NewDummyOAuth("http://", "foo_subject", nil)
+	dummy, err := auth.NewDummyOAuth("http://", "foo_subject", nil)
 	require.Nil(t, dummy)
 	require.ErrorContains(t, err, `auth: token endpoint "http://" is not an absolute URL`)
 }
 
 func TestNewDummyOAuthMustHaveSubject(t *testing.T) {
-	dummy, err := NewDummyOAuth("http://dummy/token", "\r\n\t ", nil)
+	dummy, err := auth.NewDummyOAuth("http://dummy/token", "\r\n\t ", nil)
 	require.Nil(t, dummy)
 	require.ErrorContains(t, err, "auth: subject is required")
 }
 
 func TestNewDummyOAuth(t *testing.T) {
-	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", nil)
+	dummy, err := auth.NewDummyOAuth("http://dummy/token", "foo_subject", nil)
 	require.NoError(t, err)
 	require.Equal(t, "foo_subject", dummy.Subject)
 	require.Equal(t, "http://dummy/token", dummy.Endpoint.String())
@@ -83,14 +84,14 @@ func TestNewDummyOAuth(t *testing.T) {
 }
 
 func TestNewDummyOAuthTrimsSubject(t *testing.T) {
-	dummy, err := NewDummyOAuth("http://dummy/token", "  foo  subject  ", nil)
+	dummy, err := auth.NewDummyOAuth("http://dummy/token", "  foo  subject  ", nil)
 	require.NoError(t, err)
 	require.Equal(t, "foo  subject", dummy.Subject)
 }
 
 func TestNewDummyOAuthOverridesClient(t *testing.T) {
 	client := fakeServerClient(t)
-	dummy, err := NewDummyOAuth("http://dummy/token", "foo_subject", client)
+	dummy, err := auth.NewDummyOAuth("http://dummy/token", "foo_subject", client)
 	require.NoError(t, err)
 	require.Equal(t, client, dummy.HTTP.HTTP)
 }
@@ -127,10 +128,10 @@ func TestScopeIsBlank(t *testing.T) {
 
 func TestServerRequestErrors(t *testing.T) {
 	transportErr := errors.New("connection refused")
-	client := testutil.NewErrorClient(transportErr)
-	auth, err := NewDummyOAuth("http://auth.localutm/token", "foo_subject", client)
+	client := wiretest.NewErrorClient(transportErr)
+	dummy, err := auth.NewDummyOAuth("http://auth.localutm/token", "foo_subject", client)
 	require.NoError(t, err)
-	token, err := auth.Token(t.Context(), "foo_audience", "foo_scope")
+	token, err := dummy.Token(t.Context(), "foo_audience", "foo_scope")
 	require.Equal(t, "", token)
 	require.ErrorIs(t, err, transportErr)
 }
@@ -167,12 +168,12 @@ func TestServerReturnsUnreadableBody(t *testing.T) {
 
 func TestServerErrorBodyIsTruncated(t *testing.T) {
 	server := newFakeServer(t, func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, strings.Repeat("x", maxErrorDetail*2), http.StatusBadRequest)
+		http.Error(w, strings.Repeat("x", auth.MaxErrorDetail*2), http.StatusBadRequest)
 	})
 	token, err := requestToken(t, server, "foo_subject", "foo_audience", "foo_scope")
 	require.Equal(t, "", token)
-	require.ErrorContains(t, err, strings.Repeat("x", maxErrorDetail))
-	require.NotContains(t, err.Error(), strings.Repeat("x", maxErrorDetail+1))
+	require.ErrorContains(t, err, strings.Repeat("x", auth.MaxErrorDetail))
+	require.NotContains(t, err.Error(), strings.Repeat("x", auth.MaxErrorDetail+1))
 }
 
 func TestServerReturnsBlankToken(t *testing.T) {
@@ -226,7 +227,7 @@ func TestScopesGetTrimmed(t *testing.T) {
 }
 
 func TestTokenWithMissingContext(t *testing.T) {
-	auth, _ := NewDummyOAuth("http://dummy/token", "foo_subject", nil)
+	auth, _ := auth.NewDummyOAuth("http://dummy/token", "foo_subject", nil)
 	var ctx context.Context
 	token, err := auth.Token(ctx, "foo_audience", "foo_scope")
 	require.Equal(t, "", token)

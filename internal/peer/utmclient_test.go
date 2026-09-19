@@ -1,4 +1,4 @@
-package peer
+package peer_test
 
 import (
 	"net/http"
@@ -9,6 +9,7 @@ import (
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/auth"
+	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/utmclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ func TestGetOperationalIntentDetails(t *testing.T) {
 		})
 	}))
 
-	client := New(utmclient.New(tokens, server.Client()))
+	client := peer.New(utmclient.New(tokens, server.Client()))
 
 	response, err := client.GetOperationalIntentDetails(t.Context(), baseUrl, entityId)
 	require.NoError(t, err)

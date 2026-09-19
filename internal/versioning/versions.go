@@ -8,6 +8,10 @@ import (
 
 type Handler struct{}
 
+func New() *Handler {
+	return &Handler{}
+}
+
 func (*Handler) GetVersion(w http.ResponseWriter, _ *http.Request) {
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"system_identity": "astm.f3548.v21",

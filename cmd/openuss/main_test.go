@@ -1,4 +1,4 @@
-package main
+package main_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	main "bwawan.com/openuss/cmd/openuss"
 	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
@@ -38,7 +39,7 @@ func TestListenAddr(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("PORT", tt.port)
-			assert.Equal(t, tt.want, ResolveAddress())
+			assert.Equal(t, tt.want, main.ResolveAddress())
 		})
 	}
 }
@@ -46,7 +47,7 @@ func TestListenAddr(t *testing.T) {
 func TestHandleShutdownReportsAFailedFlush(t *testing.T) {
 	logger, rec := logtest.New()
 
-	handleShutdown(func(context.Context) error {
+	main.HandleShutdown(func(context.Context) error {
 		return errors.New("collector unreachable")
 	}, logger)
 
@@ -57,7 +58,7 @@ func TestHandleShutdownReportsAFailedFlush(t *testing.T) {
 
 func TestHandleShutdownStaysQuietOnSuccess(t *testing.T) {
 	logger, rec := logtest.New()
-	handleShutdown(func(context.Context) error { return nil }, logger)
+	main.HandleShutdown(func(context.Context) error { return nil }, logger)
 	require.Nil(t, rec.Find("tracing shutdown failed"))
 }
 
@@ -70,7 +71,7 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 		hasDeadline bool
 	)
 
-	handleShutdown(func(ctx context.Context) error {
+	main.HandleShutdown(func(ctx context.Context) error {
 		flushErr = ctx.Err()
 		deadline, hasDeadline = ctx.Deadline()
 		return nil
@@ -78,13 +79,13 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 
 	require.NoError(t, flushErr)
 	require.True(t, hasDeadline)
-	require.WithinDuration(t, time.Now().Add(flushTimeout), deadline, time.Second)
+	require.WithinDuration(t, time.Now().Add(main.FlushTimeout), deadline, time.Second)
 }
 
-func serveThroughNewHandler(t *testing.T, method, target string) (*httptest.ResponseRecorder, map[string]any) {
+func serveThroughNewHTTPHandler(t *testing.T, method, target string) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	logger, logs := logtest.New()
-	handler := newHandler(db.NewInMemoryDB(), &flightplanning.Handler{}, logger)
+	handler := main.NewHTTPHandler(db.NewInMemoryDB(), &flightplanning.Handler{}, logger)
 
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(method, target, nil))
@@ -92,7 +93,7 @@ func serveThroughNewHandler(t *testing.T, method, target string) (*httptest.Resp
 }
 
 func TestNewHandlerLogsRoutedRequests(t *testing.T) {
-	response, entry := serveThroughNewHandler(t, http.MethodGet, "/versioning/versions/astm.f3548.v21")
+	response, entry := serveThroughNewHTTPHandler(t, http.MethodGet, "/versioning/versions/astm.f3548.v21")
 
 	require.Equal(t, http.StatusOK, response.Code)
 	require.NotNil(t, entry, "expected the request to be logged")
@@ -103,7 +104,7 @@ func TestNewHandlerLogsRoutedRequests(t *testing.T) {
 // The middleware wraps the mux, not the individual routes, so unknown paths
 // are logged too.
 func TestNewHandlerLogsUnroutedRequests(t *testing.T) {
-	response, entry := serveThroughNewHandler(t, http.MethodGet, "/nope")
+	response, entry := serveThroughNewHTTPHandler(t, http.MethodGet, "/nope")
 
 	require.Equal(t, http.StatusNotFound, response.Code)
 	require.NotNil(t, entry, "expected the 404 to be logged")
@@ -114,8 +115,8 @@ func TestNewPlanningHandlerMissingUssBaseUrl(t *testing.T) {
 	t.Setenv("DSS_BASE_URL", "http://dss.example.com")
 	t.Setenv("USS_BASE_URL", "\r\n\t ")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	db := db.NewInMemoryDB()
-	_, err := newPlanningHandler(dummy, db)
+	store := db.NewInMemoryDB()
+	_, err := main.NewPlanningHandler(dummy, store)
 	require.ErrorContains(t, err, "USS_BASE_URL is required")
 }
 
@@ -123,14 +124,14 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	t.Setenv("DSS_BASE_URL", "http://dss.example.com:8080/blah")
 	t.Setenv("USS_BASE_URL", "the-uss-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	db := db.NewInMemoryDB()
-	handler, err := newPlanningHandler(dummy, db)
+	store := db.NewInMemoryDB()
+	handler, err := main.NewPlanningHandler(dummy, store)
 	require.NoError(t, err)
-	dss := handler.DSS.(*dss.DSS)
-	require.Equal(t, "http://dss.example.com:8080/blah", dss.Host)
-	require.Equal(t, dummy, dss.Client.TokenSource)
-	require.Equal(t, httpclient.DefaultTimeout, dss.Client.HTTP.HTTP.Timeout)
-	require.Equal(t, db, handler.DB)
+	authority := handler.DSS.(*dss.DSS)
+	require.Equal(t, "http://dss.example.com:8080/blah", authority.Host)
+	require.Equal(t, dummy, authority.Client.TokenSource)
+	require.Equal(t, httpclient.DefaultTimeout, authority.Client.HTTP.HTTP.Timeout)
+	require.Equal(t, store, handler.DB)
 	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
 }
 
@@ -138,18 +139,18 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	t.Setenv("DSS_IMPL", "memory")
 	t.Setenv("USS_BASE_URL", "the-uss-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	db := db.NewInMemoryDB()
-	handler, err := newPlanningHandler(dummy, db)
+	store := db.NewInMemoryDB()
+	handler, err := main.NewPlanningHandler(dummy, store)
 	require.NoError(t, err)
 	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
-	require.Equal(t, db, handler.DB)
+	require.Equal(t, store, handler.DB)
 	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
 }
 
 func TestNewDummyTokenSource(t *testing.T) {
 	t.Setenv("OAUTH_ENDPOINT", "http://oauth.local")
 	t.Setenv("OAUTH_SUB", "the-oauth-subject")
-	source, err := newTokenSource()
+	source, err := main.NewTokenSource()
 	require.NoError(t, err)
 	dummy := source.(*auth.DummyOAuth)
 	require.Equal(t, "http://oauth.local", dummy.Endpoint.String())
@@ -158,7 +159,7 @@ func TestNewDummyTokenSource(t *testing.T) {
 
 func TestNewInMemoryTokenSource(t *testing.T) {
 	t.Setenv("TOKEN_IMPL", "memory")
-	source, err := newTokenSource()
+	source, err := main.NewTokenSource()
 	require.NoError(t, err)
 	require.IsType(t, auth.NewInMemoryTokenSource(), source)
 }

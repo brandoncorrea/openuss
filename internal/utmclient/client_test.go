@@ -1,4 +1,4 @@
-package utmclient
+package utmclient_test
 
 import (
 	"encoding/json/v2"
@@ -11,18 +11,19 @@ import (
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/httpclient"
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/utmclient"
+	"bwawan.com/openuss/internal/wiretest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newClient(t *testing.T, handler http.HandlerFunc) *Client {
+func newClient(t *testing.T, handler http.HandlerFunc) *utmclient.Client {
 	server := httptest.NewTestServer(t, handler)
-	return New(auth.NewInMemoryTokenSource(), server.Client())
+	return utmclient.New(auth.NewInMemoryTokenSource(), server.Client())
 }
 
 func TestNewDefaultsHTTPClient(t *testing.T) {
-	client := New(auth.NewInMemoryTokenSource(), nil)
+	client := utmclient.New(auth.NewInMemoryTokenSource(), nil)
 	require.Equal(t, httpclient.DefaultTimeout, client.HTTP.HTTP.Timeout)
 }
 
@@ -108,28 +109,28 @@ func TestDoSendsNoBodyWhenNil(t *testing.T) {
 }
 
 func TestDoFailsOnUnparsableUrl(t *testing.T) {
-	client := newClient(t, testutil.AssertNotCalledHandler(t))
+	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "http://%zz")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to parse url")
 }
 
 func TestDoFailsOnUrlWithoutHostname(t *testing.T) {
-	client := newClient(t, testutil.AssertNotCalledHandler(t))
+	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "/foo")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, `utmclient: url "/foo" has no hostname`)
 }
 
 func TestDoFailsToCreateNewRequest(t *testing.T) {
-	client := newClient(t, testutil.AssertNotCalledHandler(t))
+	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(nil, "http://dss.example.com")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to create request: net/http:")
 }
 
 func TestDoFailsToProduceToken(t *testing.T) {
-	client := newClient(t, testutil.AssertNotCalledHandler(t))
+	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	client.TokenSource = auth.NewInMemoryErrorTokenSource(errors.New("Boom!"))
 	response, err := client.Get(t.Context(), "http://dss.example.com")
 	require.Zero(t, response)
@@ -137,7 +138,7 @@ func TestDoFailsToProduceToken(t *testing.T) {
 }
 
 func TestDoFailsToMarshalBody(t *testing.T) {
-	client := newClient(t, testutil.AssertNotCalledHandler(t))
+	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	unmarshallable := make(chan int)
 	response, err := client.Post(t.Context(), "http://dss.example.com", unmarshallable)
 	require.Zero(t, response)
@@ -145,8 +146,8 @@ func TestDoFailsToMarshalBody(t *testing.T) {
 }
 
 func TestDoReturnsTransportError(t *testing.T) {
-	client := newClient(t, testutil.AssertNotCalledHandler(t))
-	client.HTTP = httpclient.New(testutil.NewErrorClient(errors.New("Boom!")))
+	client := newClient(t, wiretest.AssertNotCalledHandler(t))
+	client.HTTP = httpclient.New(wiretest.NewErrorClient(errors.New("Boom!")))
 	response, err := client.Get(t.Context(), "http://dss.example.com")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, `Get "http://dss.example.com": Boom!`)

@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"context"
@@ -10,31 +10,32 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"bwawan.com/openuss/internal/logging/logtest"
+	"bwawan.com/openuss/internal/server"
 )
 
-func listenForTest(t *testing.T) (*Server, *logtest.Recorder) {
+func listenForTest(t *testing.T) (*server.Server, *logtest.Recorder) {
 	t.Helper()
 
 	logger, rec := logtest.New()
 
-	server, err := Listen("127.0.0.1:0", http.NewServeMux(), logger)
+	srv, err := server.Listen("127.0.0.1:0", http.NewServeMux(), logger)
 	require.NoError(t, err)
-	t.Cleanup(func() { server.Close() })
+	t.Cleanup(func() { srv.Close() })
 
-	return server, rec
+	return srv, rec
 }
 
 func TestListenReportsResolvedAddress(t *testing.T) {
-	server, _ := listenForTest(t)
-	require.NotEqual(t, "127.0.0.1:0", server.Addr().String())
-	require.NotZero(t, server.Addr().(*net.TCPAddr).Port)
+	srv, _ := listenForTest(t)
+	require.NotEqual(t, "127.0.0.1:0", srv.Addr().String())
+	require.NotZero(t, srv.Addr().(*net.TCPAddr).Port)
 }
 
 func TestListenFailsOnAddressInUse(t *testing.T) {
 	taken, _ := listenForTest(t)
 	logger, _ := logtest.New()
 
-	_, err := Listen(taken.Addr().String(), http.NewServeMux(), logger)
+	_, err := server.Listen(taken.Addr().String(), http.NewServeMux(), logger)
 	require.Error(t, err)
 }
 
@@ -42,32 +43,32 @@ func TestListenUsesProvidedHandler(t *testing.T) {
 	handler := http.NewServeMux()
 	logger, _ := logtest.New()
 
-	server, err := Listen("127.0.0.1:0", handler, logger)
+	srv, err := server.Listen("127.0.0.1:0", handler, logger)
 	require.NoError(t, err)
-	t.Cleanup(func() { server.Close() })
+	t.Cleanup(func() { srv.Close() })
 
-	require.Same(t, handler, server.http.Handler)
+	require.Same(t, handler, srv.HTTP.Handler)
 }
 
 func TestListenBoundsEveryTimeout(t *testing.T) {
-	server, _ := listenForTest(t)
-	require.Equal(t, 15*time.Second, server.http.ReadHeaderTimeout)
-	require.Equal(t, 15*time.Second, server.http.ReadTimeout)
-	require.Equal(t, 10*time.Second, server.http.WriteTimeout)
-	require.Equal(t, 30*time.Second, server.http.IdleTimeout)
-	require.Equal(t, defaultShutdownTimeout, server.shutdownTimeout)
+	srv, _ := listenForTest(t)
+	require.Equal(t, 15*time.Second, srv.HTTP.ReadHeaderTimeout)
+	require.Equal(t, 15*time.Second, srv.HTTP.ReadTimeout)
+	require.Equal(t, 10*time.Second, srv.HTTP.WriteTimeout)
+	require.Equal(t, 30*time.Second, srv.HTTP.IdleTimeout)
+	require.Equal(t, server.DefaultShutdownTimeout, srv.ShutdownTimeout)
 }
 
 func TestRunServesThenShutsDownOnCancel(t *testing.T) {
-	server, rec := listenForTest(t)
+	srv, rec := listenForTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	done := make(chan error, 1)
-	go func() { done <- server.Run(ctx) }()
+	go func() { done <- srv.Run(ctx) }()
 
-	resp, err := http.Get("http://" + server.Addr().String() + "/")
+	resp, err := http.Get("http://" + srv.Addr().String() + "/")
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
@@ -78,7 +79,7 @@ func TestRunServesThenShutsDownOnCancel(t *testing.T) {
 	require.NoError(t, err)
 	entry := rec.Find("draining connections")
 	require.NotNil(t, entry, "expected a drain log line")
-	require.EqualValues(t, defaultShutdownTimeout, entry["timeout"])
+	require.EqualValues(t, server.DefaultShutdownTimeout, entry["timeout"])
 }
 
 // A handler still waiting on the DSS when SIGTERM lands outlives the drain
@@ -95,18 +96,18 @@ func TestRunReportsFailedDrain(t *testing.T) {
 
 	logger, rec := logtest.New()
 
-	server, err := Listen("127.0.0.1:0", mux, logger)
+	srv, err := server.Listen("127.0.0.1:0", mux, logger)
 	require.NoError(t, err)
-	t.Cleanup(func() { server.Close() })
-	server.shutdownTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { srv.Close() })
+	srv.ShutdownTimeout = 50 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	done := make(chan error, 1)
-	go func() { done <- server.Run(ctx) }()
+	go func() { done <- srv.Run(ctx) }()
 
-	go http.Get("http://" + server.Addr().String() + "/slow")
+	go http.Get("http://" + srv.Addr().String() + "/slow")
 	<-entered
 
 	cancel()

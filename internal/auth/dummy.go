@@ -21,7 +21,7 @@ type DummyOAuth struct {
 	HTTP     *httpclient.Client
 }
 
-const maxErrorDetail = 512
+const MaxErrorDetail = 512
 
 type DummyTokenResponse struct {
 	AccessToken string `json:"access_token"`
@@ -92,5 +92,5 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, requiredScop
 }
 
 func errorDetail(body []byte) string {
-	return string(body[:min(len(body), maxErrorDetail)])
+	return string(body[:min(len(body), MaxErrorDetail)])
 }

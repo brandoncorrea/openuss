@@ -20,9 +20,9 @@ type Client struct {
 	HTTP        *httpclient.Client
 }
 
-func New(tokenSource auth.TokenSource, client *http.Client) *Client {
+func New(tokens auth.TokenSource, client *http.Client) *Client {
 	return &Client{
-		TokenSource: tokenSource,
+		TokenSource: tokens,
 		HTTP:        httpclient.New(client),
 	}
 }

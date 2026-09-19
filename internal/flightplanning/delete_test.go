@@ -1,4 +1,4 @@
-package flightplanning
+package flightplanning_test
 
 import (
 	"net/http"
@@ -8,7 +8,9 @@ import (
 
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/flightplanning"
+	"bwawan.com/openuss/internal/scdtest"
+	"bwawan.com/openuss/internal/wiretest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,10 +22,10 @@ func newDeleteRequest(flightPlanId *string) *http.Request {
 	return request
 }
 
-func newFlightPlan(t *testing.T, handler *Handler) db.FlightPlan {
+func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan {
 	id := scdussv1.EntityID(uuid.New().String())
 	params := scdussv1.PutOperationalIntentReferenceParameters{
-		Extents: testutil.NewVolumes4D(),
+		Extents: scdtest.NewVolumes4D(),
 	}
 	result, _ := handler.DSS.PutOperationalIntentReference(t.Context(), id, nil, params)
 	reference := result.OperationalIntentReference
@@ -41,7 +43,7 @@ func newFlightPlan(t *testing.T, handler *Handler) db.FlightPlan {
 }
 
 func TestDeleteFlightPlanSucceeds(t *testing.T) {
-	handler, dss := newHandler()
+	handler, authority := newHandler()
 	flight := newFlightPlan(t, handler)
 
 	recorder := httptest.NewRecorder()
@@ -51,8 +53,8 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Nil(t, handler.DB.GetFlight(flight.Id))
 	require.Nil(t, handler.DB.GetIntent(flight.EntityID))
-	require.NotContains(t, dss.Intents, flight.EntityID)
-	testutil.RequireJSON(t, recorder, map[string]any{
+	require.NotContains(t, authority.Intents, flight.EntityID)
+	wiretest.RequireJSON(t, recorder, map[string]any{
 		"flight_plan_status": "Closed",
 		"planning_result":    "Completed",
 	})
@@ -77,7 +79,7 @@ func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
 }
 
 func TestDeleteFlightPlanFails(t *testing.T) {
-	handler, dss := newHandler()
+	handler, authority := newHandler()
 	flight := newFlightPlan(t, handler)
 	intent := handler.DB.GetIntent(flight.EntityID)
 	intent.Ovn = scdussv1.EntityOVN(uuid.New().String())
@@ -90,5 +92,5 @@ func TestDeleteFlightPlanFails(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, flight, *handler.DB.GetFlight(flight.Id))
 	require.Equal(t, intent, handler.DB.GetIntent(flight.EntityID))
-	require.Contains(t, dss.Intents, flight.EntityID)
+	require.Contains(t, authority.Intents, flight.EntityID)
 }

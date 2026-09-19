@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-const defaultShutdownTimeout = 10 * time.Second
+const DefaultShutdownTimeout = 10 * time.Second
 
 type Server struct {
-	http            *http.Server
+	HTTP            *http.Server
+	ShutdownTimeout time.Duration
 	listener        net.Listener
 	logger          *slog.Logger
-	shutdownTimeout time.Duration
 }
 
 func Listen(addr string, handler http.Handler, logger *slog.Logger) (*Server, error) {
@@ -26,8 +26,8 @@ func Listen(addr string, handler http.Handler, logger *slog.Logger) (*Server, er
 
 	return &Server{
 		logger:          logger,
-		shutdownTimeout: defaultShutdownTimeout,
-		http: &http.Server{
+		ShutdownTimeout: DefaultShutdownTimeout,
+		HTTP: &http.Server{
 			Handler:           handler,
 			ReadHeaderTimeout: 15 * time.Second,
 			ReadTimeout:       15 * time.Second,
@@ -43,12 +43,12 @@ func (s *Server) Addr() net.Addr {
 }
 
 func (s *Server) Close() error {
-	return s.http.Close()
+	return s.HTTP.Close()
 }
 
 func (s *Server) Run(ctx context.Context) error {
 	serveErr := make(chan error, 1)
-	go func() { serveErr <- s.http.Serve(s.listener) }()
+	go func() { serveErr <- s.HTTP.Serve(s.listener) }()
 
 	select {
 	case err := <-serveErr:
@@ -59,13 +59,13 @@ func (s *Server) Run(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.ShutdownTimeout)
 	defer cancel()
 
 	s.logger.InfoContext(shutdownCtx, "draining connections",
-		slog.Duration("timeout", s.shutdownTimeout))
+		slog.Duration("timeout", s.ShutdownTimeout))
 
-	if err := s.http.Shutdown(shutdownCtx); err != nil {
+	if err := s.HTTP.Shutdown(shutdownCtx); err != nil {
 		s.logger.ErrorContext(shutdownCtx, "drain did not complete", slog.Any("error", err))
 		return err
 	}

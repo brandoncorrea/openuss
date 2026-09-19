@@ -175,8 +175,10 @@ func hasAnyOtherIntent(handler *Handler, entityId scdussv1.EntityID) bool {
 	}) >= 0
 }
 
+const planningHorizon = 30 * 24 * time.Hour
+
 func isTooEager(flight FlightPlan) bool {
-	return time.Now().Add(time.Hour * 24 * 30).Before(flight.StartTime())
+	return time.Now().Add(planningHorizon).Before(flight.StartTime())
 }
 
 func hasEnded(flight FlightPlan) bool {

@@ -1,10 +1,11 @@
-package router
+package router_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"bwawan.com/openuss/internal/router"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +42,7 @@ func (*FakeOperations) GetOperationalIntent(w http.ResponseWriter, r *http.Reque
 }
 
 func NewFakeHandler() http.Handler {
-	return New(
+	return router.New(
 		&FakeVersioning{},
 		&FakeFlightPlanning{},
 		&FakeOperations{},

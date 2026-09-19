@@ -1,4 +1,4 @@
-package operations
+package operations_test
 
 import (
 	"encoding/json/v2"
@@ -10,13 +10,13 @@ import (
 
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/operations"
+	"bwawan.com/openuss/internal/scdtest"
 	"github.com/stretchr/testify/require"
 )
 
-func newHandler() *Handler {
-	db := db.NewInMemoryDB()
-	return &Handler{DB: db}
+func newHandler() *operations.Handler {
+	return operations.New(db.NewInMemoryDB())
 }
 
 func TestGetOperationalIntentMissingEntityId(t *testing.T) {
@@ -50,7 +50,7 @@ func TestGetOperationalIntentSuccess(t *testing.T) {
 		TimeEnd:         time.Now().Add(6 * time.Minute),
 		UssBaseUrl:      "the-uss-base-url",
 		SubscriptionId:  scdussv1.SubscriptionID(uuid.New().String()),
-		Volumes:         testutil.NewVolumes4D(),
+		Volumes:         scdtest.NewVolumes4D(),
 	}
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/foo", nil)

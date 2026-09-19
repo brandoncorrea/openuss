@@ -1,4 +1,4 @@
-package dss
+package dss_test
 
 import (
 	"net/http"
@@ -7,7 +7,8 @@ import (
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/dss/dsstest"
+	"bwawan.com/openuss/internal/wiretest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,18 +16,18 @@ import (
 func TestCreateIntentRespondsWithChangeResult(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
 	response := scdussv1.ChangeOperationalIntentReferenceResponse{}
-	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+	authority := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, http.StatusOK, response)
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	result, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
+	result, err := authority.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
 	require.NoError(t, err)
 	require.Equal(t, response, result)
 }
 
 func TestCreateIntentRequestParameters(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
-	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+	authority := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPut, r.Method)
 		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
 		assert.Equal(t, token, r.Header.Get("Authorization"))
@@ -34,39 +35,39 @@ func TestCreateIntentRequestParameters(t *testing.T) {
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	_, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
+	_, err := authority.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
 	require.NoError(t, err)
 }
 
 func TestUpdatesIntentWithSuppliedOVN(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
 	ovn := scdussv1.EntityOVN(uuid.New().String())
-	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+	authority := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		uri := "/dss/v1/operational_intent_references/" + string(entityId) + "/" + string(ovn)
 		assert.Equal(t, uri, r.RequestURI)
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	_, err := dss.PutOperationalIntentReference(t.Context(), entityId, &ovn, reference)
+	_, err := authority.PutOperationalIntentReference(t.Context(), entityId, &ovn, reference)
 	require.NoError(t, err)
 }
 
 func TestCreateIntentProducesErrorOnRequest(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
-	dss := newDss(t, testutil.AssertNotCalledHandler(t))
+	authority := dsstest.NewDSS(t, wiretest.AssertNotCalledHandler(t))
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	result, err := dss.PutOperationalIntentReference(nil, entityId, nil, reference)
+	result, err := authority.PutOperationalIntentReference(nil, entityId, nil, reference)
 	require.Zero(t, result)
 	require.Error(t, err)
 }
 
 func TestCreateIntentRespondsWithBadJson(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
-	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+	authority := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, http.StatusOK, "{")
 	})
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
-	result, err := dss.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
+	result, err := authority.PutOperationalIntentReference(t.Context(), entityId, nil, reference)
 	require.Zero(t, result)
 	require.Error(t, err)
 }
@@ -75,10 +76,10 @@ func TestDeleteIntentRespondsWithChangeResult(t *testing.T) {
 	entityId := scdussv1.EntityID(uuid.New().String())
 	ovn := scdussv1.EntityOVN(uuid.New().String())
 	response := scdussv1.ChangeOperationalIntentReferenceResponse{}
-	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+	authority := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, http.StatusOK, response)
 	})
-	result, err := dss.DeleteOperationalIntent(t.Context(), entityId, ovn)
+	result, err := authority.DeleteOperationalIntent(t.Context(), entityId, ovn)
 	require.NoError(t, err)
 	require.Equal(t, response, result)
 }
@@ -86,13 +87,13 @@ func TestDeleteIntentRespondsWithChangeResult(t *testing.T) {
 func TestDeleteIntentRequestParameters(t *testing.T) {
 	entityId := uuid.New().String()
 	ovn := uuid.New().String()
-	dss := newDss(t, func(w http.ResponseWriter, r *http.Request) {
+	authority := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
 		assert.Equal(t, token, r.Header.Get("Authorization"))
 		assert.Equal(t, "/dss/v1/operational_intent_references/"+entityId+"/"+ovn, r.RequestURI)
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
 	})
-	_, err := dss.DeleteOperationalIntent(t.Context(), scdussv1.EntityID(entityId), scdussv1.EntityOVN(ovn))
+	_, err := authority.DeleteOperationalIntent(t.Context(), scdussv1.EntityID(entityId), scdussv1.EntityOVN(ovn))
 	require.NoError(t, err)
 }

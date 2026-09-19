@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
@@ -28,7 +27,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const flushTimeout = 5 * time.Second
+const FlushTimeout = 5 * time.Second
 
 func ResolveAddress() string {
 	port := os.Getenv("PORT")
@@ -68,7 +67,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	defer handleShutdown(shutdownTracing, logger)
+	defer HandleShutdown(shutdownTracing, logger)
 	return runServer(ctx, logger)
 }
 
@@ -89,22 +88,22 @@ func runServer(ctx context.Context, logger *slog.Logger) error {
 }
 
 func newServer(logger *slog.Logger) (*server.Server, error) {
-	auth, err := newTokenSource()
+	tokens, err := NewTokenSource()
 	if err != nil {
 		return nil, err
 	}
-	db := db.NewInMemoryDB()
-	planning, err := newPlanningHandler(auth, db)
+	store := db.NewInMemoryDB()
+	planning, err := NewPlanningHandler(tokens, store)
 	if err != nil {
 		return nil, err
 	}
 	return server.Listen(
 		ResolveAddress(),
-		newHandler(db, planning, logger),
+		NewHTTPHandler(store, planning, logger),
 		logger)
 }
 
-func newTokenSource() (auth.TokenSource, error) {
+func NewTokenSource() (auth.TokenSource, error) {
 	if os.Getenv("TOKEN_IMPL") == "memory" {
 		return auth.NewInMemoryTokenSource(), nil
 	}
@@ -113,51 +112,39 @@ func newTokenSource() (auth.TokenSource, error) {
 	return auth.NewDummyOAuth(endpoint, sub, nil)
 }
 
-func newHandler(db db.DB, planning router.FlightPlanning, logger *slog.Logger) http.Handler {
+func NewHTTPHandler(db db.DB, planning router.FlightPlanning, logger *slog.Logger) http.Handler {
 	routes := createRouter(db, planning)
 	return httplog.Middleware(logger)(routes)
 }
 
 func createRouter(db db.DB, planning router.FlightPlanning) http.Handler {
 	return router.New(
-		&versioning.Handler{},
+		versioning.New(),
 		planning,
-		&operations.Handler{DB: db},
+		operations.New(db),
 	)
 }
 
-func newPlanningHandler(tokenSource auth.TokenSource, db db.DB) (*flightplanning.Handler, error) {
+func NewPlanningHandler(tokens auth.TokenSource, db db.DB) (*flightplanning.Handler, error) {
 	ussBaseUrl := os.Getenv("USS_BASE_URL")
 	if util.IsBlank(ussBaseUrl) {
 		return nil, errors.New("USS_BASE_URL is required")
 	}
 
-	client := utmclient.New(tokenSource, nil)
+	client := utmclient.New(tokens, nil)
 	peer := peer.New(client)
-	return &flightplanning.Handler{
-		DSS:        newUssAuthority(client),
-		DB:         db,
-		Peer:       peer,
-		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL(ussBaseUrl),
-	}, nil
+	return flightplanning.New(newUssAuthority(client), peer, db, ussBaseUrl), nil
 }
 
 func newUssAuthority(client *utmclient.Client) dss.USSAuthority {
 	if os.Getenv("DSS_IMPL") == "memory" {
 		return dss.NewInMemoryDSS()
 	}
-	return newRealDss(client)
+	return dss.New(os.Getenv("DSS_BASE_URL"), client)
 }
 
-func newRealDss(client *utmclient.Client) dss.USSAuthority {
-	return &dss.DSS{
-		Host:   os.Getenv("DSS_BASE_URL"),
-		Client: client,
-	}
-}
-
-func handleShutdown(shutdown func(context.Context) error, logger *slog.Logger) {
-	flushCtx, cancel := context.WithTimeout(context.Background(), flushTimeout)
+func HandleShutdown(shutdown func(context.Context) error, logger *slog.Logger) {
+	flushCtx, cancel := context.WithTimeout(context.Background(), FlushTimeout)
 	defer cancel()
 	if err := shutdown(flushCtx); err != nil {
 		logger.ErrorContext(flushCtx, "tracing shutdown failed", slog.Any("error", err))

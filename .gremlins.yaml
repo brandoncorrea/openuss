@@ -6,10 +6,8 @@ unleash:
     - internal/api/
     - internal/auth/inmemory.go
     - internal/dss/inmemory.go
-    - internal/dss/testhelper.go
-    - internal/logging/logtest/
     - internal/peer/inmemory.go
-    - internal/testutil/
+    - test/
 
 mutants:
   invert-assignments:

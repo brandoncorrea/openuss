@@ -1,4 +1,4 @@
-package httpclient
+package httpclient_test
 
 import (
 	"errors"
@@ -10,26 +10,27 @@ import (
 	"testing/iotest"
 	"time"
 
-	"bwawan.com/openuss/internal/testutil"
+	"bwawan.com/openuss/internal/httpclient"
+	"bwawan.com/openuss/internal/wiretest"
 	"github.com/stretchr/testify/require"
 )
 
-func get(t *testing.T, client *http.Client, endpoint string) (Response, error) {
+func get(t *testing.T, client *http.Client, endpoint string) (httpclient.Response, error) {
 	t.Helper()
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, endpoint, nil)
 	require.NoError(t, err)
-	return New(client).Do(request)
+	return httpclient.New(client).Do(request)
 }
 
 func TestNewDefaultsToTimeoutClient(t *testing.T) {
-	client := New(nil)
+	client := httpclient.New(nil)
 	require.NotNil(t, client.HTTP)
 	require.Equal(t, 10*time.Second, client.HTTP.Timeout)
 }
 
 func TestNewKeepsProvidedClient(t *testing.T) {
 	httpClient := &http.Client{}
-	client := New(httpClient)
+	client := httpclient.New(httpClient)
 	require.Same(t, httpClient, client.HTTP)
 }
 
@@ -54,7 +55,7 @@ func TestDoReturnsEmptyBodyWhenNoneIsSent(t *testing.T) {
 }
 
 func TestDoReturnsTransportErrorUnwrapped(t *testing.T) {
-	response, err := get(t, testutil.NewErrorClient(errors.New("Boom!")), "http://example.com/foo")
+	response, err := get(t, wiretest.NewErrorClient(errors.New("Boom!")), "http://example.com/foo")
 	require.Zero(t, response)
 	require.EqualError(t, err, `Get "http://example.com/foo": Boom!`)
 }
@@ -107,7 +108,7 @@ func TestDoClosesTheBodyWhenReadingFails(t *testing.T) {
 }
 
 func TestDoRefusesABodyOverTheCap(t *testing.T) {
-	body := &recordingBody{Reader: strings.NewReader(strings.Repeat("x", MaxBodyBytes+1))}
+	body := &recordingBody{Reader: strings.NewReader(strings.Repeat("x", httpclient.MaxBodyBytes+1))}
 	response, err := get(t, cannedClient(body), "http://example.com/foo")
 	require.Zero(t, response)
 	require.EqualError(t, err, "httpclient: reading response from http://example.com/foo: body exceeds 1048576 bytes")
@@ -115,8 +116,8 @@ func TestDoRefusesABodyOverTheCap(t *testing.T) {
 }
 
 func TestDoAcceptsABodyAtTheCap(t *testing.T) {
-	body := &recordingBody{Reader: strings.NewReader(strings.Repeat("x", MaxBodyBytes))}
+	body := &recordingBody{Reader: strings.NewReader(strings.Repeat("x", httpclient.MaxBodyBytes))}
 	response, err := get(t, cannedClient(body), "http://example.com/foo")
 	require.NoError(t, err)
-	require.Len(t, response.Body, MaxBodyBytes)
+	require.Len(t, response.Body, httpclient.MaxBodyBytes)
 }
