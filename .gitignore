@@ -37,6 +37,7 @@ go.work.sum
 .codex
 AGENTS.md
 CLAUDE.md
+docs
 
 # Beads / Dolt files (added by bd init)
 .beads
@@ -44,6 +45,7 @@ CLAUDE.md
 *.db
 .beads-credential-key
 .beads/proxieddb/
+.beads.gate.lock
 
 # Build output
 bin/
