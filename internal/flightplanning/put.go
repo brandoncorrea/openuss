@@ -85,7 +85,8 @@ func (h *Handler) putOrRejectFlight(
 
 func isLowerPriority(details scdussv1.GetOperationalIntentDetailsResponse) bool {
 	return details.OperationalIntent.Details.Priority != nil &&
-		*details.OperationalIntent.Details.Priority == 100
+		*details.OperationalIntent.Details.Priority == 100 &&
+		details.OperationalIntent.Reference.State != scdussv1.OperationalIntentState_Activated
 }
 
 func isInvalidFlight(plan FlightPlan) bool {

@@ -256,6 +256,36 @@ func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
 	require.Empty(t, slices.Collect(handler.DB.GetAllFlights()))
 }
 
+func TestCreateIntentApprovesWithActivePeerAtPriority100(t *testing.T) {
+	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
+		{
+			Reference: scdussv1.OperationalIntentReference{
+				Id:         scdussv1.EntityID(uuid.New().String()),
+				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
+				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
+				State:      scdussv1.OperationalIntentState_Activated,
+			},
+			Details: scdussv1.OperationalIntentDetails{
+				Priority: new(scdussv1.Priority(100)),
+			},
+		},
+	})
+
+	flightID, flight := newFlightParams()
+	response := httptest.NewRecorder()
+	request := putFlightPlanRequest(&flightID, flight)
+	handler.PutFlightPlan(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	wiretest.RequireJSON(t, response, map[string]any{
+		"planning_result":    "Completed",
+		"flight_plan_status": "Planned",
+	})
+	plan := handler.DB.GetFlight(flightID)
+	require.NotNil(t, plan)
+	require.NotNil(t, handler.DB.GetIntent(plan.EntityID))
+}
+
 func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
 	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
 		{
