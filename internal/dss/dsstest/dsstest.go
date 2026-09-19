@@ -25,14 +25,14 @@ func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.DSS {
 }
 
 func NewPeerHandler(peers []scdussv1.OperationalIntent) http.HandlerFunc {
-	handleDss := dssHandlerFromPeers(peers)
-	handleUss := ussHandlerFromPeers(peers)
+	handleDSS := dssHandlerFromPeers(peers)
+	handleUSS := ussHandlerFromPeers(peers)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Host == "dss.localutm" {
-			handleDss(w, r)
+			handleDSS(w, r)
 		} else {
-			handleUss(w, r)
+			handleUSS(w, r)
 		}
 	}
 }
@@ -41,7 +41,7 @@ func ussHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		index := slices.IndexFunc(peers, func(intent scdussv1.OperationalIntent) bool {
 			host := strings.TrimPrefix(string(intent.Reference.UssBaseUrl), "http://")
-			return host == r.Host && string(intent.Reference.Id) == uriEntityId(r.RequestURI)
+			return host == r.Host && string(intent.Reference.Id) == uriEntityID(r.RequestURI)
 		})
 
 		if index >= 0 {
@@ -82,7 +82,7 @@ func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 		} else {
 			api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{
 				OperationalIntentReference: scdussv1.OperationalIntentReference{
-					Id:         scdussv1.EntityID(uriEntityId(r.RequestURI)),
+					Id:         scdussv1.EntityID(uriEntityID(r.RequestURI)),
 					Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
 					UssBaseUrl: putParams.UssBaseUrl,
 				},
@@ -91,7 +91,7 @@ func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	}
 }
 
-func uriEntityId(uri string) string {
+func uriEntityID(uri string) string {
 	parts := strings.Split(uri, "/")
 	return parts[len(parts)-1]
 }

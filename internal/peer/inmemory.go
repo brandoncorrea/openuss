@@ -15,13 +15,13 @@ func NewInMemoryPeer(peers []scdussv1.OperationalIntentReference) *InMemoryPeer 
 	return &InMemoryPeer{References: peers}
 }
 
-func (peer *InMemoryPeer) GetOperationalIntentDetails(
+func (p *InMemoryPeer) GetOperationalIntentDetails(
 	_ context.Context,
-	ussBaseUrl scdussv1.OperationalIntentUssBaseURL,
-	entityId scdussv1.EntityID,
+	ussBaseURL scdussv1.OperationalIntentUssBaseURL,
+	entityID scdussv1.EntityID,
 ) (scdussv1.GetOperationalIntentDetailsResponse, error) {
-	for _, intent := range peer.References {
-		if intent.Id == entityId && intent.UssBaseUrl == ussBaseUrl {
+	for _, intent := range p.References {
+		if intent.Id == entityID && intent.UssBaseUrl == ussBaseURL {
 			return scdussv1.GetOperationalIntentDetailsResponse{
 				OperationalIntent: scdussv1.OperationalIntent{
 					Reference: intent,
@@ -29,6 +29,6 @@ func (peer *InMemoryPeer) GetOperationalIntentDetails(
 			}, nil
 		}
 	}
-	err := fmt.Errorf("operational intent not found on %s: %s", ussBaseUrl, entityId)
+	err := fmt.Errorf("operational intent not found on %s: %s", ussBaseURL, entityID)
 	return scdussv1.GetOperationalIntentDetailsResponse{}, err
 }

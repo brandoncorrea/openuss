@@ -126,17 +126,17 @@ func createRouter(db db.DB, planning router.FlightPlanning) http.Handler {
 }
 
 func NewPlanningHandler(tokens auth.TokenSource, db db.DB) (*flightplanning.Handler, error) {
-	ussBaseUrl := os.Getenv("USS_BASE_URL")
-	if util.IsBlank(ussBaseUrl) {
+	ussBaseURL := os.Getenv("USS_BASE_URL")
+	if util.IsBlank(ussBaseURL) {
 		return nil, errors.New("USS_BASE_URL is required")
 	}
 
 	client := utmclient.New(tokens, nil)
 	peer := peer.New(client)
-	return flightplanning.New(newUssAuthority(client), peer, db, ussBaseUrl), nil
+	return flightplanning.New(newUSSAuthority(client), peer, db, ussBaseURL), nil
 }
 
-func newUssAuthority(client *utmclient.Client) dss.USSAuthority {
+func newUSSAuthority(client *utmclient.Client) dss.USSAuthority {
 	if os.Getenv("DSS_IMPL") == "memory" {
 		return dss.NewInMemoryDSS()
 	}

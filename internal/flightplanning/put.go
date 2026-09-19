@@ -16,46 +16,46 @@ import (
 )
 
 type PutFlightPlanBody struct {
-	RequestId      scdussv1.UUIDv4Format `json:"request_id"`
+	RequestID      scdussv1.UUIDv4Format `json:"request_id"`
 	ExecutionStyle string                `json:"execution_style"`
 	FlightPlan     FlightPlan            `json:"flight_plan"`
 }
 
-func (handler *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	var body PutFlightPlanBody
 
 	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &body)
 
 	id := uuid.MustParse(r.PathValue("flight_plan_id"))
-	status, result := handler.putOrRejectFlight(r.Context(), id, body.FlightPlan)
+	status, result := h.putOrRejectFlight(r.Context(), id, body.FlightPlan)
 	api.WriteJSON(w, status, result)
 }
 
-func (handler *Handler) putOrRejectFlight(
+func (h *Handler) putOrRejectFlight(
 	ctx context.Context,
-	flightId uuid.UUID,
+	flightID uuid.UUID,
 	plan FlightPlan,
 ) (int, any) {
 	if isInvalidFlight(plan) {
 		return rejectionResponse()
 	}
 
-	existingFlight := handler.DB.GetFlight(flightId)
-	entityId, ovn := handler.findIdsForExistingFlightPlan(existingFlight)
+	existingFlight := h.DB.GetFlight(flightID)
+	entityID, ovn := h.findIDsForExistingFlightPlan(existingFlight)
 
 	// TODO(gap): This assumes everything overlaps
-	if hasAnyOtherIntent(handler, entityId) {
+	if h.hasAnyOtherIntent(entityID) {
 		return rejectionResponse()
 	}
 
-	putParams := handler.createPutRequestParams(plan)
+	putParams := h.createPutRequestParams(plan)
 
 	// TODO(gap): What happens if the DSS call results in a non-conflict error?
-	result, err := handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)
+	result, err := h.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		missing := (*conflict.MissingOperationalIntents)[0]
-		details, _ := handler.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
+		details, _ := h.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
 		if isLowerPriority(details) {
 			// TODO(gap): This check is probably wrong
 			status := "NotPlanned"
@@ -70,11 +70,11 @@ func (handler *Handler) putOrRejectFlight(
 			}
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
-		result, err = handler.DSS.PutOperationalIntentReference(ctx, entityId, ovn, putParams)
+		result, err = h.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
 	}
 
-	intent := handler.saveOperationalIntent(plan, result)
-	handler.saveFlightPlan(flightId, intent)
+	intent := h.saveOperationalIntent(plan, result)
+	h.saveFlightPlan(flightID, intent)
 
 	return http.StatusOK, map[string]any{
 		"planning_result":    "Completed",
@@ -93,19 +93,19 @@ func isInvalidFlight(plan FlightPlan) bool {
 	return isTooEager(plan) || hasEnded(plan)
 }
 
-func (handler *Handler) findIdsForExistingFlightPlan(flight *db.FlightPlan) (scdussv1.EntityID, *scdussv1.EntityOVN) {
+func (h *Handler) findIDsForExistingFlightPlan(flight *db.FlightPlan) (scdussv1.EntityID, *scdussv1.EntityOVN) {
 	if flight == nil {
 		return scdussv1.EntityID(uuid.New().String()), nil
 	}
-	intent := handler.DB.GetIntent(flight.EntityID)
-	return intent.EntityID, new(intent.Ovn)
+	intent := h.DB.GetIntent(flight.EntityID)
+	return intent.EntityID, new(intent.OVN)
 }
 
-func (handler *Handler) createPutRequestParams(plan FlightPlan) scdussv1.PutOperationalIntentReferenceParameters {
+func (h *Handler) createPutRequestParams(plan FlightPlan) scdussv1.PutOperationalIntentReferenceParameters {
 	return scdussv1.PutOperationalIntentReferenceParameters{
 		Extents:    plan.BasicInformation.Area,
 		State:      flightPlanState(plan),
-		UssBaseUrl: handler.UssBaseUrl,
+		UssBaseUrl: h.USSBaseURL,
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
 			// TODO(gap): This probably needs to be a proper URL
 			UssBaseUrl: scdussv1.SubscriptionUssBaseURL("x"),
@@ -120,7 +120,7 @@ func flightPlanState(plan FlightPlan) scdussv1.OperationalIntentState {
 	return scdussv1.OperationalIntentState_Accepted
 }
 
-func (handler *Handler) saveOperationalIntent(
+func (h *Handler) saveOperationalIntent(
 	plan FlightPlan,
 	result scdussv1.ChangeOperationalIntentReferenceResponse,
 ) db.OperationalIntent {
@@ -129,24 +129,24 @@ func (handler *Handler) saveOperationalIntent(
 	intent := db.OperationalIntent{
 		EntityID:        result.OperationalIntentReference.Id,
 		Manager:         result.OperationalIntentReference.Manager,
-		UssAvailability: result.OperationalIntentReference.UssAvailability,
+		USSAvailability: result.OperationalIntentReference.UssAvailability,
 		Version:         result.OperationalIntentReference.Version,
-		Priority:        scdussv1.Priority(plan.Astm.Priority),
+		Priority:        scdussv1.Priority(plan.F3548.Priority),
 		State:           result.OperationalIntentReference.State,
-		Ovn:             *result.OperationalIntentReference.Ovn,
+		OVN:             *result.OperationalIntentReference.Ovn,
 		TimeStart:       timeStart,
 		TimeEnd:         timeEnd,
-		UssBaseUrl:      result.OperationalIntentReference.UssBaseUrl,
-		SubscriptionId:  result.OperationalIntentReference.SubscriptionId,
+		USSBaseURL:      result.OperationalIntentReference.UssBaseUrl,
+		SubscriptionID:  result.OperationalIntentReference.SubscriptionId,
 		Volumes:         plan.BasicInformation.Area,
 	}
-	handler.DB.SaveIntent(intent)
+	h.DB.SaveIntent(intent)
 	return intent
 }
 
-func (handler *Handler) saveFlightPlan(id uuid.UUID, intent db.OperationalIntent) {
-	handler.DB.SaveFlight(db.FlightPlan{
-		Id:       id,
+func (h *Handler) saveFlightPlan(id uuid.UUID, intent db.OperationalIntent) {
+	h.DB.SaveFlight(db.FlightPlan{
+		ID:       id,
 		EntityID: intent.EntityID,
 	})
 }
@@ -168,10 +168,10 @@ func rejectionResponse() (int, map[string]any) {
 	}
 }
 
-func hasAnyOtherIntent(handler *Handler, entityId scdussv1.EntityID) bool {
-	intents := slices.Collect(handler.DB.GetAllIntents())
+func (h *Handler) hasAnyOtherIntent(entityID scdussv1.EntityID) bool {
+	intents := slices.Collect(h.DB.GetAllIntents())
 	return slices.IndexFunc(intents, func(intent db.OperationalIntent) bool {
-		return intent.EntityID != entityId
+		return intent.EntityID != entityID
 	}) >= 0
 }
 

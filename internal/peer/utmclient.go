@@ -16,13 +16,13 @@ func New(client *utmclient.Client) *UTMClient {
 	return &UTMClient{Client: client}
 }
 
-func (peer *UTMClient) GetOperationalIntentDetails(
+func (p *UTMClient) GetOperationalIntentDetails(
 	ctx context.Context,
-	ussBaseUrl scdussv1.OperationalIntentUssBaseURL,
-	entityId scdussv1.EntityID,
+	ussBaseURL scdussv1.OperationalIntentUssBaseURL,
+	entityID scdussv1.EntityID,
 ) (scdussv1.GetOperationalIntentDetailsResponse, error) {
-	endpoint := string(ussBaseUrl) + "/uss/v1/operational_intents/" + string(entityId)
-	response, err := peer.Client.Get(ctx, endpoint, scdussv1.UtmStrategicCoordinationScope)
+	endpoint := string(ussBaseURL) + "/uss/v1/operational_intents/" + string(entityID)
+	response, err := p.Client.Get(ctx, endpoint, scdussv1.UtmStrategicCoordinationScope)
 	if err != nil {
 		return scdussv1.GetOperationalIntentDetailsResponse{}, err
 	}

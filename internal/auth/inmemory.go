@@ -20,8 +20,8 @@ func NewInMemoryErrorTokenSource(err error) *InMemoryTokenSource {
 	return &InMemoryTokenSource{Error: err}
 }
 
-func (source *InMemoryTokenSource) Token(_ context.Context, audience string, scopes ...api.RequiredScope) (string, error) {
+func (t *InMemoryTokenSource) Token(_ context.Context, audience string, scopes ...api.RequiredScope) (string, error) {
 	scope := strings.Join(util.Map(scopes, util.TrimString), ",")
 	token := "audience=" + audience + "&scopes=" + scope
-	return token, source.Error
+	return token, t.Error
 }

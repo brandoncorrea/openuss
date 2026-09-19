@@ -20,7 +20,7 @@ func NewInMemoryDSS() *InMemoryDSS {
 	}
 }
 
-func (dss *InMemoryDSS) PutOperationalIntentReference(
+func (d *InMemoryDSS) PutOperationalIntentReference(
 	ctx context.Context,
 	id scdussv1.EntityID,
 	ovn *scdussv1.EntityOVN,
@@ -28,11 +28,11 @@ func (dss *InMemoryDSS) PutOperationalIntentReference(
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
 	mustHaveContext(ctx)
 	return scdussv1.ChangeOperationalIntentReferenceResponse{
-		OperationalIntentReference: dss.createOperationalIntentReference(id, ovn, params),
+		OperationalIntentReference: d.createOperationalIntentReference(id, ovn, params),
 	}, nil
 }
 
-func (dss *InMemoryDSS) createOperationalIntentReference(
+func (d *InMemoryDSS) createOperationalIntentReference(
 	id scdussv1.EntityID,
 	ovn *scdussv1.EntityOVN,
 	params scdussv1.PutOperationalIntentReferenceParameters,
@@ -62,12 +62,12 @@ func (dss *InMemoryDSS) createOperationalIntentReference(
 			Volumes: &params.Extents,
 		},
 	}
-	intent.Reference.SubscriptionId = dss.createImplicitSubscription(params.NewSubscription, id)
-	dss.Intents[intent.Reference.Id] = intent
+	intent.Reference.SubscriptionId = d.createImplicitSubscription(params.NewSubscription, id)
+	d.Intents[intent.Reference.Id] = intent
 	return intent.Reference
 }
 
-func (dss *InMemoryDSS) createImplicitSubscription(
+func (d *InMemoryDSS) createImplicitSubscription(
 	implicit *scdussv1.ImplicitSubscriptionParameters,
 	dependentIntent scdussv1.EntityID,
 ) scdussv1.SubscriptionID {
@@ -81,17 +81,17 @@ func (dss *InMemoryDSS) createImplicitSubscription(
 		NotifyForOperationalIntents: new(true),
 		DependentOperationalIntents: &[]scdussv1.EntityID{dependentIntent},
 	}
-	dss.Subscriptions[subscription.Id] = subscription
+	d.Subscriptions[subscription.Id] = subscription
 	return subscription.Id
 }
 
-func (dss *InMemoryDSS) DeleteOperationalIntent(
+func (d *InMemoryDSS) DeleteOperationalIntent(
 	ctx context.Context,
 	id scdussv1.EntityID,
 	ovn scdussv1.EntityOVN,
 ) (response scdussv1.ChangeOperationalIntentReferenceResponse, err error) {
 	mustHaveContext(ctx)
-	intent, ok := dss.Intents[id]
+	intent, ok := d.Intents[id]
 	if !ok {
 		err = fmt.Errorf("dss: operational intent not found %v", id)
 		return
@@ -100,7 +100,7 @@ func (dss *InMemoryDSS) DeleteOperationalIntent(
 		err = fmt.Errorf("dss: supplied OVN does not match")
 		return
 	}
-	delete(dss.Intents, id)
+	delete(d.Intents, id)
 	return scdussv1.ChangeOperationalIntentReferenceResponse{}, nil
 }
 

@@ -19,15 +19,15 @@ type Client struct {
 	HTTP *http.Client
 }
 
-func New(client *http.Client) *Client {
-	if client == nil {
-		client = &http.Client{Timeout: DefaultTimeout}
+func New(c *http.Client) *Client {
+	if c == nil {
+		c = &http.Client{Timeout: DefaultTimeout}
 	}
-	return &Client{HTTP: client}
+	return &Client{HTTP: c}
 }
 
-func (client *Client) Do(request *http.Request) (Response, error) {
-	response, err := client.HTTP.Do(request)
+func (c *Client) Do(request *http.Request) (Response, error) {
+	response, err := c.HTTP.Do(request)
 	if err != nil {
 		return Response{}, err
 	}

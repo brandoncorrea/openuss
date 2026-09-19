@@ -8,13 +8,13 @@ import (
 	"bwawan.com/openuss/internal/api/scdussv1"
 )
 
-func (handler *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
-	entityId := r.PathValue("entity_id")
-	if entityId == "" {
+func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
+	entityID := r.PathValue("entity_id")
+	if entityID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	intent := handler.DB.GetIntent(scdussv1.EntityID(entityId))
+	intent := h.DB.GetIntent(scdussv1.EntityID(entityID))
 	if intent == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -24,10 +24,10 @@ func (handler *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Requ
 			Reference: scdussv1.OperationalIntentReference{
 				Id:              intent.EntityID,
 				Manager:         intent.Manager,
-				UssAvailability: intent.UssAvailability,
+				UssAvailability: intent.USSAvailability,
 				Version:         intent.Version,
 				State:           intent.State,
-				Ovn:             &intent.Ovn,
+				Ovn:             &intent.OVN,
 				TimeStart: scdussv1.Time{
 					Value:  intent.TimeStart.Format(time.RFC3339Nano),
 					Format: "RFC3339",
@@ -36,8 +36,8 @@ func (handler *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Requ
 					Value:  intent.TimeEnd.Format(time.RFC3339Nano),
 					Format: "RFC3339",
 				},
-				UssBaseUrl:     intent.UssBaseUrl,
-				SubscriptionId: intent.SubscriptionId,
+				UssBaseUrl:     intent.USSBaseURL,
+				SubscriptionId: intent.SubscriptionID,
 			},
 			Details: scdussv1.OperationalIntentDetails{
 				Volumes:  &intent.Volumes,

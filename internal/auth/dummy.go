@@ -46,7 +46,7 @@ func NewDummyOAuth(endpoint string, subject string, client *http.Client) (*Dummy
 	}, nil
 }
 
-func (auth *DummyOAuth) Token(ctx context.Context, audience string, requiredScopes ...api.RequiredScope) (string, error) {
+func (d *DummyOAuth) Token(ctx context.Context, audience string, requiredScopes ...api.RequiredScope) (string, error) {
 	audience = strings.TrimSpace(audience)
 	if audience == "" {
 		return "", errors.New("auth: audience is required")
@@ -61,19 +61,19 @@ func (auth *DummyOAuth) Token(ctx context.Context, audience string, requiredScop
 		return "", errors.New("auth: at least one scope is required")
 	}
 
-	endpoint := *auth.Endpoint
+	endpoint := *d.Endpoint
 	endpoint.RawQuery = url.Values{
 		"grant_type":        {"client_credentials"},
 		"scope":             {strings.Join(scopes, " ")},
 		"intended_audience": {audience},
 		"issuer":            {"dummy"},
-		"sub":               {auth.Subject},
+		"sub":               {d.Subject},
 	}.Encode()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
 		return "", fmt.Errorf("auth: building token request: %w", err)
 	}
-	response, err := auth.HTTP.Do(request)
+	response, err := d.HTTP.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("auth: requesting token: %w", err)
 	}

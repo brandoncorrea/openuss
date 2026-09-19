@@ -26,12 +26,12 @@ import (
 
 func newFlightPlanBody() flightplanning.PutFlightPlanBody {
 	return flightplanning.PutFlightPlanBody{
-		RequestId: scdussv1.UUIDv4Format(uuid.New().String()),
+		RequestID: scdussv1.UUIDv4Format(uuid.New().String()),
 		FlightPlan: flightplanning.FlightPlan{
 			BasicInformation: flightplanning.FlightPlanBasicInformation{
 				Area: scdtest.NewVolumes4D(),
 			},
-			Astm: flightplanning.AstmF3548v21{
+			F3548: flightplanning.F3548{
 				Priority: 2,
 			},
 		},
@@ -61,9 +61,9 @@ func newHandler() (*flightplanning.Handler, *dss.InMemoryDSS) {
 }
 
 func TestCreateFlightPlanSucceeds(t *testing.T) {
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightId, flight)
+	request := putFlightPlanRequest(&flightID, flight)
 	handler, authority := newHandler()
 	handler.PutFlightPlan(response, request)
 
@@ -82,14 +82,14 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	savedIntent := handler.DB.GetIntent(dssIntent.Reference.Id)
 	require.Equal(t, dssIntent.Reference.Id, savedIntent.EntityID)
 	require.Equal(t, "InMemoryManager", savedIntent.Manager)
-	require.Equal(t, scdussv1.UssAvailabilityState_Normal, savedIntent.UssAvailability)
+	require.Equal(t, scdussv1.UssAvailabilityState_Normal, savedIntent.USSAvailability)
 	require.EqualValues(t, 1, savedIntent.Version)
 	require.EqualValues(t, 2, savedIntent.Priority)
 	require.Equal(t, scdussv1.OperationalIntentState_Accepted, savedIntent.State)
-	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionId)
-	require.EqualValues(t, "x", authority.Subscriptions[savedIntent.SubscriptionId].UssBaseUrl)
+	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionID)
+	require.EqualValues(t, "x", authority.Subscriptions[savedIntent.SubscriptionID].UssBaseUrl)
 
-	_, err := uuid.Parse(string(savedIntent.Ovn))
+	_, err := uuid.Parse(string(savedIntent.OVN))
 	require.NoError(t, err)
 
 	timeStart, _ := time.Parse(time.RFC3339Nano, dssIntent.Reference.TimeStart.Value)
@@ -100,26 +100,26 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, *dssIntent.Details.Volumes, savedIntent.Volumes)
 
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
-	require.Equal(t, dssIntent.Reference.Id, handler.DB.GetFlight(flightId).EntityID)
+	require.Equal(t, dssIntent.Reference.Id, handler.DB.GetFlight(flightID).EntityID)
 }
 
 func TestUpdateFlightPlanSucceeds(t *testing.T) {
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	createResponse := httptest.NewRecorder()
 	handler, authority := newHandler()
-	handler.PutFlightPlan(createResponse, putFlightPlanRequest(&flightId, flight))
+	handler.PutFlightPlan(createResponse, putFlightPlanRequest(&flightID, flight))
 
 	wiretest.RequireJSON(t, createResponse, map[string]any{
 		"planning_result":    "Completed",
 		"flight_plan_status": "Planned",
 	})
 
-	flight1 := handler.DB.GetFlight(flightId)
+	flight1 := handler.DB.GetFlight(flightID)
 	intent1 := handler.DB.GetIntent(flight1.EntityID)
 
 	updateResponse := httptest.NewRecorder()
 	flight.FlightPlan.BasicInformation.Area[0].Volume.AltitudeLower.Value += 1
-	handler.PutFlightPlan(updateResponse, putFlightPlanRequest(&flightId, flight))
+	handler.PutFlightPlan(updateResponse, putFlightPlanRequest(&flightID, flight))
 
 	wiretest.RequireJSON(t, updateResponse, map[string]any{
 		"planning_result":    "Completed",
@@ -130,12 +130,12 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
 	require.Len(t, slices.Collect(handler.DB.GetAllIntents()), 1)
 
-	flight2 := handler.DB.GetFlight(flightId)
+	flight2 := handler.DB.GetFlight(flightID)
 	intent2 := handler.DB.GetIntent(flight2.EntityID)
 
 	require.Equal(t, flight1, flight2)
-	require.NotZero(t, intent1.Ovn)
-	require.Equal(t, intent1.Ovn, intent2.Ovn)
+	require.NotZero(t, intent1.OVN)
+	require.Equal(t, intent1.OVN, intent2.OVN)
 
 	dssIntent := slices.Collect(maps.Values(authority.Intents))[0]
 	require.Equal(t, flight2.EntityID, dssIntent.Reference.Id)
@@ -143,14 +143,14 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 }
 
 func TestPutFlightPlanTooFarOut(t *testing.T) {
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	tooLate := time.Now().Add(time.Hour * 24 * 30).Add(time.Second)
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	area.TimeStart.Value = tooLate.Format(time.RFC3339Nano)
 	area.TimeEnd.Value = tooLate.Add(time.Hour).Format(time.RFC3339Nano)
 	planner, _ := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(&flightId, flight))
+	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
@@ -159,14 +159,14 @@ func TestPutFlightPlanTooFarOut(t *testing.T) {
 }
 
 func TestPutAlreadyEndedFlightPlan(t *testing.T) {
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	area := flight.FlightPlan.BasicInformation.Area[0]
 	oneSecondAgo := time.Now().Add(-time.Second)
 	area.TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
 	area.TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
 	planner, _ := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(&flightId, flight))
+	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
@@ -175,13 +175,13 @@ func TestPutAlreadyEndedFlightPlan(t *testing.T) {
 }
 
 func TestPutRejectsWhenAnotherIntentExists(t *testing.T) {
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	planner, _ := newHandler()
 	planner.DB.SaveIntent(db.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	})
-	planner.PutFlightPlan(response, putFlightPlanRequest(&flightId, flight))
+	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
@@ -191,9 +191,9 @@ func TestPutRejectsWhenAnotherIntentExists(t *testing.T) {
 
 func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	response := httptest.NewRecorder()
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	flight.FlightPlan.BasicInformation.UsageState = "InUse"
-	request := putFlightPlanRequest(&flightId, flight)
+	request := putFlightPlanRequest(&flightID, flight)
 	handler, authority := newHandler()
 	handler.PutFlightPlan(response, request)
 
@@ -217,9 +217,9 @@ func TestCreateIntentRetriesWithPeerOvnsWhenKeyIsMissing(t *testing.T) {
 		},
 	})
 
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightId, flight)
+	request := putFlightPlanRequest(&flightID, flight)
 	handler.PutFlightPlan(response, request)
 
 	require.Equal(t, http.StatusOK, response.Code)
@@ -241,9 +241,9 @@ func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
 		},
 	})
 
-	flightId, flight := newFlightParams()
+	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightId, flight)
+	request := putFlightPlanRequest(&flightID, flight)
 	handler.PutFlightPlan(response, request)
 
 	require.Equal(t, http.StatusOK, response.Code)
@@ -270,21 +270,21 @@ func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
 		},
 	})
 
-	flightId, flightParams := newFlightParams()
+	flightID, flightParams := newFlightParams()
 
 	intent := db.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
-		Ovn:      scdussv1.EntityOVN(uuid.New().String()),
+		OVN:      scdussv1.EntityOVN(uuid.New().String()),
 	}
 	flight := db.FlightPlan{
-		Id:       flightId,
+		ID:       flightID,
 		EntityID: intent.EntityID,
 	}
 	handler.DB.SaveIntent(intent)
 	handler.DB.SaveFlight(flight)
 
 	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightId, flightParams)
+	request := putFlightPlanRequest(&flightID, flightParams)
 	handler.PutFlightPlan(response, request)
 
 	require.Equal(t, http.StatusOK, response.Code)

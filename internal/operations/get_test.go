@@ -19,7 +19,7 @@ func newHandler() *operations.Handler {
 	return operations.New(db.NewInMemoryDB())
 }
 
-func TestGetOperationalIntentMissingEntityId(t *testing.T) {
+func TestGetOperationalIntentMissingEntityID(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
 	handler := newHandler()
@@ -37,24 +37,24 @@ func TestGetOperationalIntentNotExists(t *testing.T) {
 }
 
 func TestGetOperationalIntentSuccess(t *testing.T) {
-	entityId := uuid.New().String()
+	entityID := uuid.New().String()
 	intent := db.OperationalIntent{
-		EntityID:        scdussv1.EntityID(entityId),
+		EntityID:        scdussv1.EntityID(entityID),
 		Manager:         "the-manager",
-		UssAvailability: scdussv1.UssAvailabilityState_Normal,
+		USSAvailability: scdussv1.UssAvailabilityState_Normal,
 		Version:         1,
 		Priority:        2,
 		State:           scdussv1.OperationalIntentState_Accepted,
-		Ovn:             scdussv1.EntityOVN(uuid.New().String()),
+		OVN:             scdussv1.EntityOVN(uuid.New().String()),
 		TimeStart:       time.Now().Add(time.Minute),
 		TimeEnd:         time.Now().Add(6 * time.Minute),
-		UssBaseUrl:      "the-uss-base-url",
-		SubscriptionId:  scdussv1.SubscriptionID(uuid.New().String()),
+		USSBaseURL:      "the-uss-base-url",
+		SubscriptionID:  scdussv1.SubscriptionID(uuid.New().String()),
 		Volumes:         scdtest.NewVolumes4D(),
 	}
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
-	request.SetPathValue("entity_id", entityId)
+	request.SetPathValue("entity_id", entityID)
 	handler := newHandler()
 	handler.DB.SaveIntent(intent)
 
@@ -74,7 +74,7 @@ func TestGetOperationalIntentSuccess(t *testing.T) {
 	require.Equal(t, "RFC3339", result.OperationalIntent.Reference.TimeEnd.Format)
 	require.Equal(t, intent.TimeEnd.Format(time.RFC3339Nano), result.OperationalIntent.Reference.TimeEnd.Value)
 	require.EqualValues(t, "the-uss-base-url", result.OperationalIntent.Reference.UssBaseUrl)
-	require.Equal(t, intent.SubscriptionId, result.OperationalIntent.Reference.SubscriptionId)
+	require.Equal(t, intent.SubscriptionID, result.OperationalIntent.Reference.SubscriptionId)
 	require.Equal(t, intent.Volumes, *result.OperationalIntent.Details.Volumes)
 	require.EqualValues(t, 2, *result.OperationalIntent.Details.Priority)
 }

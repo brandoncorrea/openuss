@@ -28,8 +28,8 @@ type BadTransport struct {
 	Error error
 }
 
-func (transport *BadTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, transport.Error
+func (t *BadTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, t.Error
 }
 
 func NewErrorClient(err error) *http.Client {

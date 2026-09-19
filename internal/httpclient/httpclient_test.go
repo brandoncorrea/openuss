@@ -66,16 +66,16 @@ type recordingBody struct {
 	closed  bool
 }
 
-func (body *recordingBody) Read(p []byte) (int, error) {
-	n, err := body.Reader.Read(p)
+func (r *recordingBody) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
 	if err == io.EOF {
-		body.drained = true
+		r.drained = true
 	}
 	return n, err
 }
 
-func (body *recordingBody) Close() error {
-	body.closed = true
+func (r *recordingBody) Close() error {
+	r.closed = true
 	return nil
 }
 
@@ -83,8 +83,8 @@ type cannedTransport struct {
 	body io.ReadCloser
 }
 
-func (transport *cannedTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return &http.Response{StatusCode: http.StatusOK, Body: transport.body}, nil
+func (t *cannedTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Body: t.body}, nil
 }
 
 func cannedClient(body io.ReadCloser) *http.Client {

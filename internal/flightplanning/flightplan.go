@@ -7,30 +7,30 @@ import (
 )
 
 type FlightPlanBasicInformation struct {
-	UsageState  string              `json:"usage_state"`
-	UasState    string              `json:"uas_state"`
-	Area        []scdussv1.Volume4D `json:"area"`
-	UtmId       *string             `json:"utm_id"`
-	Description *string             `json:"description"`
+	UsageState    string              `json:"usage_state"`
+	UASState      string              `json:"uas_state"`
+	Area          []scdussv1.Volume4D `json:"area"`
+	UTMIdentifier *string             `json:"utm_id"`
+	Description   *string             `json:"description"`
 }
 
-type AstmF3548v21 struct {
+type F3548 struct {
 	Priority int `json:"priority"`
 }
 
 type FlightPlan struct {
 	BasicInformation FlightPlanBasicInformation `json:"basic_information"`
-	Astm             AstmF3548v21               `json:"astm_f3548_21"`
+	F3548            F3548                      `json:"astm_f3548_21"`
 }
 
-func (flight *FlightPlan) StartTime() time.Time {
+func (f *FlightPlan) StartTime() time.Time {
 	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
-	return rfc3339(flight.BasicInformation.Area[0].TimeStart.Value)
+	return rfc3339(f.BasicInformation.Area[0].TimeStart.Value)
 }
 
-func (flight *FlightPlan) EndTime() time.Time {
+func (f *FlightPlan) EndTime() time.Time {
 	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
-	return rfc3339(flight.BasicInformation.Area[0].TimeEnd.Value)
+	return rfc3339(f.BasicInformation.Area[0].TimeEnd.Value)
 }
 
 func rfc3339(s string) time.Time {

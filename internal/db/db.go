@@ -22,19 +22,19 @@ type DB interface {
 type OperationalIntent struct {
 	EntityID        scdussv1.EntityID
 	Manager         string
-	UssAvailability scdussv1.UssAvailabilityState
+	USSAvailability scdussv1.UssAvailabilityState
 	Version         int32
 	Priority        scdussv1.Priority
 	State           scdussv1.OperationalIntentState
-	Ovn             scdussv1.EntityOVN
+	OVN             scdussv1.EntityOVN
 	TimeStart       time.Time
 	TimeEnd         time.Time
-	UssBaseUrl      scdussv1.OperationalIntentUssBaseURL
-	SubscriptionId  scdussv1.SubscriptionID
+	USSBaseURL      scdussv1.OperationalIntentUssBaseURL
+	SubscriptionID  scdussv1.SubscriptionID
 	Volumes         []scdussv1.Volume4D
 }
 
 type FlightPlan struct {
-	Id       uuid.UUID
+	ID       uuid.UUID
 	EntityID scdussv1.EntityID
 }

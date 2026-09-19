@@ -108,14 +108,14 @@ func TestDoSendsNoBodyWhenNil(t *testing.T) {
 	requireGetSuccess(t, "http://dss.example.com", handler)
 }
 
-func TestDoFailsOnUnparsableUrl(t *testing.T) {
+func TestDoFailsOnUnparsableURL(t *testing.T) {
 	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "http://%zz")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to parse url")
 }
 
-func TestDoFailsOnUrlWithoutHostname(t *testing.T) {
+func TestDoFailsOnURLWithoutHostname(t *testing.T) {
 	client := newClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "/foo")
 	require.Zero(t, response)

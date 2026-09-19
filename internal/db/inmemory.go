@@ -20,42 +20,42 @@ func NewInMemoryDB() *InMemoryDB {
 	}
 }
 
-func (db *InMemoryDB) SaveIntent(intent OperationalIntent) error {
-	db.Intents[intent.EntityID] = intent
+func (s *InMemoryDB) SaveIntent(intent OperationalIntent) error {
+	s.Intents[intent.EntityID] = intent
 	return nil
 }
 
-func (db *InMemoryDB) GetIntent(id scdussv1.EntityID) *OperationalIntent {
-	if e, ok := db.Intents[id]; ok {
+func (s *InMemoryDB) GetIntent(id scdussv1.EntityID) *OperationalIntent {
+	if e, ok := s.Intents[id]; ok {
 		return &e
 	}
 	return nil
 }
 
-func (db *InMemoryDB) DeleteIntent(id scdussv1.EntityID) {
-	delete(db.Intents, id)
+func (s *InMemoryDB) DeleteIntent(id scdussv1.EntityID) {
+	delete(s.Intents, id)
 }
 
-func (db *InMemoryDB) GetAllIntents() iter.Seq[OperationalIntent] {
-	return maps.Values(db.Intents)
+func (s *InMemoryDB) GetAllIntents() iter.Seq[OperationalIntent] {
+	return maps.Values(s.Intents)
 }
 
-func (db *InMemoryDB) SaveFlight(flight FlightPlan) error {
-	db.Flights[flight.Id] = flight
+func (s *InMemoryDB) SaveFlight(flight FlightPlan) error {
+	s.Flights[flight.ID] = flight
 	return nil
 }
 
-func (db *InMemoryDB) GetFlight(id uuid.UUID) *FlightPlan {
-	if e, ok := db.Flights[id]; ok {
+func (s *InMemoryDB) GetFlight(id uuid.UUID) *FlightPlan {
+	if e, ok := s.Flights[id]; ok {
 		return &e
 	}
 	return nil
 }
 
-func (db *InMemoryDB) DeleteFlight(id uuid.UUID) {
-	delete(db.Flights, id)
+func (s *InMemoryDB) DeleteFlight(id uuid.UUID) {
+	delete(s.Flights, id)
 }
 
-func (db *InMemoryDB) GetAllFlights() iter.Seq[FlightPlan] {
-	return maps.Values(db.Flights)
+func (s *InMemoryDB) GetAllFlights() iter.Seq[FlightPlan] {
+	return maps.Values(s.Flights)
 }

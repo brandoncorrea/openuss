@@ -28,27 +28,27 @@ type statusRecorder struct {
 	statusCode int
 }
 
-func (rec *statusRecorder) WriteHeader(statusCode int) {
-	if rec.statusCode == 0 {
-		rec.statusCode = statusCode
+func (s *statusRecorder) WriteHeader(statusCode int) {
+	if s.statusCode == 0 {
+		s.statusCode = statusCode
 	}
-	rec.ResponseWriter.WriteHeader(statusCode)
+	s.ResponseWriter.WriteHeader(statusCode)
 }
 
-func (rec *statusRecorder) Write(p []byte) (int, error) {
-	if rec.statusCode == 0 {
-		rec.statusCode = http.StatusOK
+func (s *statusRecorder) Write(p []byte) (int, error) {
+	if s.statusCode == 0 {
+		s.statusCode = http.StatusOK
 	}
-	return rec.ResponseWriter.Write(p)
+	return s.ResponseWriter.Write(p)
 }
 
-func (rec *statusRecorder) Unwrap() http.ResponseWriter {
-	return rec.ResponseWriter
+func (s *statusRecorder) Unwrap() http.ResponseWriter {
+	return s.ResponseWriter
 }
 
-func (rec *statusRecorder) status() int {
-	if rec.statusCode == 0 {
+func (s *statusRecorder) status() int {
+	if s.statusCode == 0 {
 		return http.StatusOK
 	}
-	return rec.statusCode
+	return s.statusCode
 }

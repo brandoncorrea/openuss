@@ -26,8 +26,8 @@ type AirspaceConflictError struct {
 	MissingOperationalIntents *[]scdussv1.OperationalIntentReference
 }
 
-func (err AirspaceConflictError) Error() string {
-	return *err.Message
+func (e AirspaceConflictError) Error() string {
+	return *e.Message
 }
 
 func NewAirspaceConflictError(response scdussv1.AirspaceConflictResponse) AirspaceConflictError {
@@ -37,14 +37,14 @@ func NewAirspaceConflictError(response scdussv1.AirspaceConflictResponse) Airspa
 	}
 }
 
-func (dss *DSS) PutOperationalIntentReference(
+func (d *DSS) PutOperationalIntentReference(
 	ctx context.Context,
-	entityId scdussv1.EntityID,
+	entityID scdussv1.EntityID,
 	ovn *scdussv1.EntityOVN,
 	reference scdussv1.PutOperationalIntentReferenceParameters,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
-	endpoint := dss.toOperationalIntentEndpoint(entityId, ovn)
-	response, err := dss.Client.Put(ctx, endpoint, reference, scdussv1.UtmStrategicCoordinationScope)
+	endpoint := d.toOperationalIntentEndpoint(entityID, ovn)
+	response, err := d.Client.Put(ctx, endpoint, reference, scdussv1.UtmStrategicCoordinationScope)
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}
@@ -56,21 +56,21 @@ func (dss *DSS) PutOperationalIntentReference(
 	return scdussv1.ChangeOperationalIntentReferenceResponse{}, NewAirspaceConflictError(conflict)
 }
 
-func (dss *DSS) DeleteOperationalIntent(
+func (d *DSS) DeleteOperationalIntent(
 	ctx context.Context,
-	entityId scdussv1.EntityID,
+	entityID scdussv1.EntityID,
 	ovn scdussv1.EntityOVN,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
-	endpoint := dss.toOperationalIntentEndpoint(entityId, &ovn)
-	response, err := dss.Client.Delete(ctx, endpoint, scdussv1.UtmStrategicCoordinationScope)
+	endpoint := d.toOperationalIntentEndpoint(entityID, &ovn)
+	response, err := d.Client.Delete(ctx, endpoint, scdussv1.UtmStrategicCoordinationScope)
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}
 	return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
 }
 
-func (dss *DSS) toOperationalIntentEndpoint(entityId scdussv1.EntityID, ovn *scdussv1.EntityOVN) string {
-	endpoint := dss.Host + "/dss/v1/operational_intent_references/" + string(entityId)
+func (d *DSS) toOperationalIntentEndpoint(entityID scdussv1.EntityID, ovn *scdussv1.EntityOVN) string {
+	endpoint := d.Host + "/dss/v1/operational_intent_references/" + string(entityID)
 	if ovn != nil {
 		endpoint += "/" + string(*ovn)
 	}

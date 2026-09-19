@@ -79,21 +79,21 @@ func TestDeleteFlightOnEmptyDB(t *testing.T) {
 func TestGetSavedFlight(t *testing.T) {
 	store := db.NewInMemoryDB()
 	flight := db.FlightPlan{
-		Id: uuid.New(),
+		ID: uuid.New(),
 	}
 	require.NoError(t, store.SaveFlight(flight))
-	require.Equal(t, flight, *(store.GetFlight(flight.Id)))
+	require.Equal(t, flight, *(store.GetFlight(flight.ID)))
 }
 
 func TestDeleteSavedFlight(t *testing.T) {
 	store := db.NewInMemoryDB()
 	flight := db.FlightPlan{
-		Id: uuid.New(),
+		ID: uuid.New(),
 	}
 	require.NoError(t, store.SaveFlight(flight))
-	require.Equal(t, flight, *store.GetFlight(flight.Id))
-	store.DeleteFlight(flight.Id)
-	require.Nil(t, store.GetFlight(flight.Id))
+	require.Equal(t, flight, *store.GetFlight(flight.ID))
+	store.DeleteFlight(flight.ID)
+	require.Nil(t, store.GetFlight(flight.ID))
 }
 
 func TestGetAllFlights(t *testing.T) {
@@ -101,7 +101,7 @@ func TestGetAllFlights(t *testing.T) {
 	require.Empty(t, slices.Collect(store.GetAllFlights()))
 
 	flight1 := db.FlightPlan{
-		Id:       uuid.New(),
+		ID:       uuid.New(),
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
 	store.SaveFlight(flight1)
@@ -109,7 +109,7 @@ func TestGetAllFlights(t *testing.T) {
 	require.Equal(t, []db.FlightPlan{flight1}, saved)
 
 	flight2 := db.FlightPlan{
-		Id:       uuid.New(),
+		ID:       uuid.New(),
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 	}
 	store.SaveFlight(flight2)

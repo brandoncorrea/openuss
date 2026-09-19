@@ -111,7 +111,7 @@ func TestNewHandlerLogsUnroutedRequests(t *testing.T) {
 	require.EqualValues(t, http.StatusNotFound, entry["status"])
 }
 
-func TestNewPlanningHandlerMissingUssBaseUrl(t *testing.T) {
+func TestNewPlanningHandlerMissingUSSBaseURL(t *testing.T) {
 	t.Setenv("DSS_BASE_URL", "http://dss.example.com")
 	t.Setenv("USS_BASE_URL", "\r\n\t ")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
@@ -132,7 +132,7 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	require.Equal(t, dummy, authority.Client.TokenSource)
 	require.Equal(t, httpclient.DefaultTimeout, authority.Client.HTTP.HTTP.Timeout)
 	require.Equal(t, store, handler.DB)
-	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
+	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
 }
 
 func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
@@ -144,7 +144,7 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
 	require.Equal(t, store, handler.DB)
-	require.EqualValues(t, "the-uss-base-url", handler.UssBaseUrl)
+	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
 }
 
 func TestNewDummyTokenSource(t *testing.T) {

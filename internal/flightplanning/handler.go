@@ -11,19 +11,19 @@ type Handler struct {
 	DSS        dss.USSAuthority
 	Peer       peer.Client
 	DB         db.DB
-	UssBaseUrl scdussv1.OperationalIntentUssBaseURL
+	USSBaseURL scdussv1.OperationalIntentUssBaseURL
 }
 
 func New(
 	dss dss.USSAuthority,
 	peer peer.Client,
 	db db.DB,
-	baseUrl string,
+	baseURL string,
 ) *Handler {
 	return &Handler{
 		DSS:        dss,
 		Peer:       peer,
 		DB:         db,
-		UssBaseUrl: scdussv1.OperationalIntentUssBaseURL(baseUrl),
+		USSBaseURL: scdussv1.OperationalIntentUssBaseURL(baseURL),
 	}
 }

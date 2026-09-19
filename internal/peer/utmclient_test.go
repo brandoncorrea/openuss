@@ -16,14 +16,14 @@ import (
 )
 
 func TestGetOperationalIntentDetails(t *testing.T) {
-	baseUrl := scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm")
-	entityId := scdussv1.EntityID(uuid.New().String())
+	baseURL := scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm")
+	entityID := scdussv1.EntityID(uuid.New().String())
 	tokens := auth.NewInMemoryTokenSource()
 
 	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Nil(t, r.TLS)
 		assert.Equal(t, "uss1.localutm", r.Host)
-		assert.Equal(t, "/uss/v1/operational_intents/"+string(entityId), r.RequestURI)
+		assert.Equal(t, "/uss/v1/operational_intents/"+string(entityID), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
 
 		token, err := tokens.Token(t.Context(), "uss1.localutm", scdussv1.UtmStrategicCoordinationScope)
@@ -33,7 +33,7 @@ func TestGetOperationalIntentDetails(t *testing.T) {
 		api.WriteJSON(w, http.StatusOK, scdussv1.GetOperationalIntentDetailsResponse{
 			OperationalIntent: scdussv1.OperationalIntent{
 				Reference: scdussv1.OperationalIntentReference{
-					Id: entityId,
+					Id: entityID,
 				},
 			},
 		})
@@ -41,7 +41,7 @@ func TestGetOperationalIntentDetails(t *testing.T) {
 
 	client := peer.New(utmclient.New(tokens, server.Client()))
 
-	response, err := client.GetOperationalIntentDetails(t.Context(), baseUrl, entityId)
+	response, err := client.GetOperationalIntentDetails(t.Context(), baseURL, entityID)
 	require.NoError(t, err)
-	require.Equal(t, entityId, response.OperationalIntent.Reference.Id)
+	require.Equal(t, entityID, response.OperationalIntent.Reference.Id)
 }

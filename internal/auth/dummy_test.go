@@ -145,7 +145,7 @@ func TestServerReturnsNon2XX(t *testing.T) {
 	require.ErrorContains(t, err, "auth: token endpoint returned 400: oh no!\n")
 }
 
-func TestServerReturnsInvalidJson(t *testing.T) {
+func TestServerReturnsInvalidJSON(t *testing.T) {
 	server := newFakeServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("{"))

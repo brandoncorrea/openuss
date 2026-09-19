@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newDeleteRequest(flightPlanId *string) *http.Request {
+func newDeleteRequest(flightPlanID *string) *http.Request {
 	request := httptest.NewRequest(http.MethodDelete, "/blah", nil)
-	if flightPlanId != nil {
-		request.SetPathValue("flight_plan_id", *flightPlanId)
+	if flightPlanID != nil {
+		request.SetPathValue("flight_plan_id", *flightPlanID)
 	}
 	return request
 }
@@ -31,10 +31,10 @@ func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan 
 	reference := result.OperationalIntentReference
 	intent := db.OperationalIntent{
 		EntityID: reference.Id,
-		Ovn:      *reference.Ovn,
+		OVN:      *reference.Ovn,
 	}
 	flight := db.FlightPlan{
-		Id:       uuid.New(),
+		ID:       uuid.New(),
 		EntityID: intent.EntityID,
 	}
 	handler.DB.SaveIntent(intent)
@@ -47,11 +47,11 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	flight := newFlightPlan(t, handler)
 
 	recorder := httptest.NewRecorder()
-	request := newDeleteRequest(new(flight.Id.String()))
+	request := newDeleteRequest(new(flight.ID.String()))
 	handler.DeleteFlightPlan(recorder, request)
 
 	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Nil(t, handler.DB.GetFlight(flight.Id))
+	require.Nil(t, handler.DB.GetFlight(flight.ID))
 	require.Nil(t, handler.DB.GetIntent(flight.EntityID))
 	require.NotContains(t, authority.Intents, flight.EntityID)
 	wiretest.RequireJSON(t, recorder, map[string]any{
@@ -60,7 +60,7 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	})
 }
 
-func TestDeleteFlightPlanMissingFlightId(t *testing.T) {
+func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	request := newDeleteRequest(nil)
 	handler, _ := newHandler()
@@ -82,15 +82,15 @@ func TestDeleteFlightPlanFails(t *testing.T) {
 	handler, authority := newHandler()
 	flight := newFlightPlan(t, handler)
 	intent := handler.DB.GetIntent(flight.EntityID)
-	intent.Ovn = scdussv1.EntityOVN(uuid.New().String())
+	intent.OVN = scdussv1.EntityOVN(uuid.New().String())
 	handler.DB.SaveIntent(*intent)
 
 	recorder := httptest.NewRecorder()
-	request := newDeleteRequest(new(flight.Id.String()))
+	request := newDeleteRequest(new(flight.ID.String()))
 	handler.DeleteFlightPlan(recorder, request)
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
-	require.Equal(t, flight, *handler.DB.GetFlight(flight.Id))
+	require.Equal(t, flight, *handler.DB.GetFlight(flight.ID))
 	require.Equal(t, intent, handler.DB.GetIntent(flight.EntityID))
 	require.Contains(t, authority.Intents, flight.EntityID)
 }
