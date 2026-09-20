@@ -38,7 +38,10 @@ func (h *Handler) putOrRejectFlight(
 	flightID uuid.UUID,
 	plan FlightPlan,
 ) (int, any) {
-	if isInvalidFlight(plan) {
+	params := toIntentParams(plan)
+
+	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
+	if isInvalidIntent(params) {
 		return rejectionResponse()
 	}
 
@@ -50,7 +53,7 @@ func (h *Handler) putOrRejectFlight(
 		return rejectionResponse()
 	}
 
-	putParams := h.createPutRequestParams(plan)
+	putParams := h.createPutRequestParams(params)
 
 	// TODO(gap): What happens if the DSS call results in a non-conflict error?
 	result, err := h.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
@@ -74,7 +77,7 @@ func (h *Handler) putOrRejectFlight(
 		result, err = h.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
 	}
 
-	intent := h.saveOperationalIntent(plan, result)
+	intent := h.saveOperationalIntent(params, result)
 	h.saveFlightPlan(flightID, intent)
 
 	return http.StatusOK, map[string]any{
@@ -90,9 +93,16 @@ func isLowerPriority(details scdussv1.GetOperationalIntentDetailsResponse) bool 
 		details.OperationalIntent.Reference.State != scdussv1.OperationalIntentState_Activated
 }
 
-func isInvalidFlight(plan FlightPlan) bool {
-	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
-	return isTooEager(plan) || hasEnded(plan)
+func toIntentParams(plan FlightPlan) scd.IntentParams {
+	return scd.IntentParams{
+		Volumes:  plan.BasicInformation.Area,
+		State:    flightPlanState(plan),
+		Priority: scdussv1.Priority(plan.F3548.Priority),
+	}
+}
+
+func isInvalidIntent(params scd.IntentParams) bool {
+	return isTooEager(params) || hasEnded(params)
 }
 
 func (h *Handler) findIDsForExistingFlightPlan(flight *db.FlightPlan) (scdussv1.EntityID, *scdussv1.EntityOVN) {
@@ -104,10 +114,12 @@ func (h *Handler) findIDsForExistingFlightPlan(flight *db.FlightPlan) (scdussv1.
 	return intent.EntityID, new(intent.OVN)
 }
 
-func (h *Handler) createPutRequestParams(plan FlightPlan) scdussv1.PutOperationalIntentReferenceParameters {
+func (h *Handler) createPutRequestParams(
+	params scd.IntentParams,
+) scdussv1.PutOperationalIntentReferenceParameters {
 	return scdussv1.PutOperationalIntentReferenceParameters{
-		Extents:    plan.BasicInformation.Area,
-		State:      flightPlanState(plan),
+		Extents:    params.Volumes,
+		State:      params.State,
 		UssBaseUrl: h.USSBaseURL,
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
 			// TODO(gap): This probably needs to be a proper URL
@@ -124,7 +136,7 @@ func flightPlanState(plan FlightPlan) scdussv1.OperationalIntentState {
 }
 
 func (h *Handler) saveOperationalIntent(
-	plan FlightPlan,
+	params scd.IntentParams,
 	result scdussv1.ChangeOperationalIntentReferenceResponse,
 ) scd.OperationalIntent {
 	timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)
@@ -134,14 +146,14 @@ func (h *Handler) saveOperationalIntent(
 		Manager:         result.OperationalIntentReference.Manager,
 		USSAvailability: result.OperationalIntentReference.UssAvailability,
 		Version:         result.OperationalIntentReference.Version,
-		Priority:        scdussv1.Priority(plan.F3548.Priority),
+		Priority:        params.Priority,
 		State:           result.OperationalIntentReference.State,
 		OVN:             *result.OperationalIntentReference.Ovn,
 		TimeStart:       timeStart,
 		TimeEnd:         timeEnd,
 		USSBaseURL:      result.OperationalIntentReference.UssBaseUrl,
 		SubscriptionID:  result.OperationalIntentReference.SubscriptionId,
-		Volumes:         plan.BasicInformation.Area,
+		Volumes:         params.Volumes,
 	}
 	// TODO: Missing context; no error handling
 	h.Intents.Upsert(nil, intent)
@@ -182,10 +194,26 @@ func (h *Handler) hasAnyOtherIntent(entityID scdussv1.EntityID) bool {
 
 const planningHorizon = 30 * 24 * time.Hour
 
-func isTooEager(flight FlightPlan) bool {
-	return time.Now().Add(planningHorizon).Before(flight.StartTime())
+func isTooEager(params scd.IntentParams) bool {
+	return time.Now().Add(planningHorizon).Before(startTime(params))
 }
 
-func hasEnded(flight FlightPlan) bool {
-	return flight.EndTime().Before(time.Now())
+func hasEnded(params scd.IntentParams) bool {
+	return endTime(params).Before(time.Now())
+}
+
+func startTime(params scd.IntentParams) time.Time {
+	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
+	return rfc3339(params.Volumes[0].TimeStart.Value)
+}
+
+func endTime(params scd.IntentParams) time.Time {
+	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
+	return rfc3339(params.Volumes[0].TimeEnd.Value)
+}
+
+func rfc3339(s string) time.Time {
+	// TODO(gap): Nothing validates a malformed timestamp
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
 }

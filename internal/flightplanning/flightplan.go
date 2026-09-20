@@ -1,10 +1,6 @@
 package flightplanning
 
-import (
-	"time"
-
-	"bwawan.com/openuss/internal/api/scdussv1"
-)
+import "bwawan.com/openuss/internal/api/scdussv1"
 
 type FlightPlanBasicInformation struct {
 	UsageState    string              `json:"usage_state"`
@@ -21,20 +17,4 @@ type F3548 struct {
 type FlightPlan struct {
 	BasicInformation FlightPlanBasicInformation `json:"basic_information"`
 	F3548            F3548                      `json:"astm_f3548_21"`
-}
-
-func (f *FlightPlan) StartTime() time.Time {
-	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
-	return rfc3339(f.BasicInformation.Area[0].TimeStart.Value)
-}
-
-func (f *FlightPlan) EndTime() time.Time {
-	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
-	return rfc3339(f.BasicInformation.Area[0].TimeEnd.Value)
-}
-
-func rfc3339(s string) time.Time {
-	// TODO(gap): Nothing validates a malformed timestamp
-	t, _ := time.Parse(time.RFC3339, s)
-	return t
 }
