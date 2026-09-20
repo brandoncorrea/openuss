@@ -2,6 +2,7 @@ package dss
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -93,7 +94,7 @@ func (d *InMemoryDSS) DeleteOperationalIntentReference(
 		return
 	}
 	if *intent.Reference.Ovn != ovn {
-		err = fmt.Errorf("dss: supplied OVN does not match")
+		err = errors.New("dss: supplied OVN does not match")
 		return
 	}
 	delete(d.intents, id)
