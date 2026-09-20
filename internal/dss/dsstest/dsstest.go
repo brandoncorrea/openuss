@@ -17,7 +17,7 @@ import (
 	"bwawan.com/openuss/internal/utmclient"
 )
 
-func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.DSS {
+func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.UTMClient {
 	t.Helper()
 	server := httptest.NewTestServer(t, http.HandlerFunc(handler))
 	client := utmclient.New(auth.NewInMemoryTokenSource(), server.Client())
