@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"uuid"
 
-	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/sdk/api"
 )
 
 func (h *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {

@@ -6,12 +6,12 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/internal/scdtest"
 	"bwawan.com/openuss/internal/wiretest"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 	"github.com/stretchr/testify/require"
 )
 

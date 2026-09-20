@@ -3,7 +3,7 @@ package peer
 import (
 	"context"
 
-	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
 type Client interface {

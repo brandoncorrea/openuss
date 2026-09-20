@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/internal/wiretest"
+	"bwawan.com/openuss/sdk/api"
 	"github.com/stretchr/testify/require"
 )
 

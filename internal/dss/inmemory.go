@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"uuid"
 
-	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
 type InMemoryDSS struct {

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/api"
-	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/dss/dsstest"
 	"bwawan.com/openuss/internal/wiretest"
+	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

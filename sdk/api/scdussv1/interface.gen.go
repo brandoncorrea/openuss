@@ -2,7 +2,7 @@
 package scdussv1
 
 import (
-	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/sdk/api"
 	"context"
 )
 

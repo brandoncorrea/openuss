@@ -3,7 +3,7 @@ package flightplanning
 import (
 	"net/http"
 
-	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/sdk/api"
 )
 
 func (*Handler) GetStatus(w http.ResponseWriter, _ *http.Request) {

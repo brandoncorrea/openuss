@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 
-	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/sdk/api"
 )
 
 type TokenSource interface {

@@ -1,6 +1,6 @@
 package flightplanning
 
-import "bwawan.com/openuss/internal/api/scdussv1"
+import "bwawan.com/openuss/sdk/api/scdussv1"
 
 type FlightPlanBasicInformation struct {
 	UsageState    string              `json:"usage_state"`

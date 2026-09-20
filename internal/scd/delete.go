@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
 func (s *Service) DeleteOperationalIntent(ctx context.Context, id scdussv1.EntityID) error {

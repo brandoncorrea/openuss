@@ -3,7 +3,7 @@ unleash:
   output-statuses: "lc"
   timeout-coefficient: 3
   exclude-files:
-    - internal/api/
+    - sdk/api/
     - internal/auth/inmemory.go
     - internal/dss/inmemory.go
     - internal/peer/inmemory.go

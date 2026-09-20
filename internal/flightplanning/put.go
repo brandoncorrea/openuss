@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"uuid"
 
-	"bwawan.com/openuss/internal/api"
-	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/scd"
+	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
 type PutFlightPlanBody struct {

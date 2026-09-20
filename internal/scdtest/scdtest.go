@@ -3,7 +3,7 @@ package scdtest
 import (
 	"time"
 
-	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
 func NewVolumes4D() []scdussv1.Volume4D {

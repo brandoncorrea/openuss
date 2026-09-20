@@ -1,6 +1,6 @@
 package scd
 
-import "bwawan.com/openuss/internal/api/scdussv1"
+import "bwawan.com/openuss/sdk/api/scdussv1"
 
 type IntentParams struct {
 	Volumes  []scdussv1.Volume4D

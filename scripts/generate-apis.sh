@@ -8,8 +8,8 @@ REPO_ROOT="$(pwd)"
 DSS_REF="0642018eae0daf0562f5f891dfa3bd71605acf7c"
 GENERATOR_IMAGE="openuss/openapi-to-go-server:${DSS_REF}"
 
-API_FOLDER="${REPO_ROOT}/internal/api"
-API_IMPORT="bwawan.com/openuss/internal/api"
+API_FOLDER="${REPO_ROOT}/sdk/api"
+API_IMPORT="bwawan.com/openuss/sdk/api"
 
 PROTOCOL="${REPO_ROOT}/interfaces/astm-utm/Protocol"
 
@@ -28,10 +28,10 @@ rm -rf "${API_FOLDER}"
 mkdir -p "${API_FOLDER}"
 docker container run --rm -u "$(id -u):$(id -g)" \
   -v "${PROTOCOL}:/spec/protocol:ro" \
-  -v "${API_FOLDER}:/resources/internal/api" \
+  -v "${API_FOLDER}:/resources/sdk/api" \
   "${GENERATOR_IMAGE}" \
   --api "/spec/protocol/utm.yaml#p2p_utm,dss@scdussv1" \
-  --api_folder /resources/internal/api \
+  --api_folder /resources/sdk/api \
   --api_import "${API_IMPORT}"
 
 echo "==> Removing server.gen.go"

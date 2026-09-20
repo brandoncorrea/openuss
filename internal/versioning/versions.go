@@ -3,7 +3,7 @@ package versioning
 import (
 	"net/http"
 
-	"bwawan.com/openuss/internal/api"
+	"bwawan.com/openuss/sdk/api"
 )
 
 type Handler struct{}
