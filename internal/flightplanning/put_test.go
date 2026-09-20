@@ -1,8 +1,8 @@
 package flightplanning_test
 
 import (
+	"context"
 	"encoding/json/v2"
-	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -15,13 +15,9 @@ import (
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/wiretest"
 	"bwawan.com/openuss/sdk/api/scdussv1"
-	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/dss"
-	"bwawan.com/openuss/sdk/dss/dsstest"
-	"bwawan.com/openuss/sdk/peer"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
-	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,6 +57,13 @@ func newHandler() (*flightplanning.Handler, *dss.InMemoryDSS) {
 	return flightplanning.New(service, db.NewInMemoryDB()), dssClient
 }
 
+func scdService(t *testing.T, handler *flightplanning.Handler) *scd.Service {
+	t.Helper()
+	service, ok := handler.SCD.(*scd.Service)
+	require.True(t, ok, "handler is not backed by a real scd.Service")
+	return service
+}
+
 func TestCreateFlightPlanSucceeds(t *testing.T) {
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
@@ -74,7 +77,9 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	})
 
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
-	intent, err := handler.SCD.Intents.Get(t.Context(), handler.DB.GetFlight(flightID).EntityID)
+
+	entityID := handler.DB.GetFlight(flightID).EntityID
+	intent, err := scdService(t, handler).Intents.Get(t.Context(), entityID)
 	require.NoError(t, err)
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, intent.Volumes)
 	require.EqualValues(t, 2, intent.Priority)
@@ -106,7 +111,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
 	require.Equal(t, flight1, handler.DB.GetFlight(flightID))
 
-	intents, err := handler.SCD.Intents.List(t.Context())
+	intents, err := scdService(t, handler).Intents.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, intents, 1)
 	require.Equal(t, flight1.EntityID, intents[0].EntityID)
@@ -142,32 +147,27 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 		"flight_plan_status": "Planned",
 	})
 
-	dssIntent := slices.Collect(maps.Values(dssClient.Intents))[0]
+	dssIntent := dssClient.OperationalIntents()[0]
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, dssIntent.Reference.State)
 }
 
-func newPriority100Peer() []scdussv1.OperationalIntent {
-	return []scdussv1.OperationalIntent{
-		{
-			Reference: scdussv1.OperationalIntentReference{
-				Id:         scdussv1.EntityID(uuid.New().String()),
-				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
-			},
-			Details: scdussv1.OperationalIntentDetails{
-				Priority: new(scdussv1.Priority(100)),
-			},
+func rejectWith(err error) scdtest.Stub {
+	return scdtest.Stub{
+		CreateFn: func(context.Context, scd.IntentParams) (scd.OperationalIntent, error) {
+			return scd.OperationalIntent{}, err
+		},
+		UpdateFn: func(context.Context, scdussv1.EntityID, scd.IntentParams) (scd.OperationalIntent, error) {
+			return scd.OperationalIntent{}, err
 		},
 	}
 }
 
 func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
-	handler := newHandlerFromPeers(t, newPriority100Peer())
+	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryDB())
 
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightID, flight)
-	handler.PutFlightPlan(response, request)
+	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
@@ -178,24 +178,17 @@ func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 }
 
 func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
-	handler := newHandlerFromPeers(t, newPriority100Peer())
+	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryDB())
 
 	flightID, flightParams := newFlightParams()
-
-	intent := scd.OperationalIntent{
-		EntityID: scdussv1.EntityID(uuid.New().String()),
-		OVN:      scdussv1.EntityOVN(uuid.New().String()),
-	}
 	flight := db.FlightPlan{
 		ID:       flightID,
-		EntityID: intent.EntityID,
+		EntityID: scdtest.NewEntityID(),
 	}
-	require.NoError(t, handler.SCD.Intents.Upsert(t.Context(), intent))
 	handler.DB.SaveFlight(flight)
 
 	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightID, flightParams)
-	handler.PutFlightPlan(response, request)
+	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flightParams))
 
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
@@ -203,18 +196,4 @@ func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
 		"flight_plan_status": "Planned",
 	})
 	require.ElementsMatch(t, []db.FlightPlan{flight}, slices.Collect(handler.DB.GetAllFlights()))
-}
-
-func newHandlerFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *flightplanning.Handler {
-	client := utmclient.New(
-		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, dsstest.NewPeerHandler(peers)).Client(),
-	)
-	service := scd.New(
-		dss.New("https://dss.localutm", client),
-		peer.New(client),
-		scd.NewInMemoryIntentStore(),
-		"http://openuss.localutm",
-	)
-	return flightplanning.New(service, db.NewInMemoryDB())
 }

@@ -22,7 +22,7 @@ func newCoordinatedIntent(t *testing.T, service *scd.Service) scd.OperationalInt
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: scdtest.NewVolumes4D(),
 	}
-	result, err := service.DSS.PutOperationalIntentReference(t.Context(), newEntityID(), nil, params)
+	result, err := service.DSS.PutOperationalIntentReference(t.Context(), scdtest.NewEntityID(), nil, params)
 	require.NoError(t, err)
 
 	intent := scd.OperationalIntent{
@@ -39,7 +39,8 @@ func TestDeleteOperationalIntentRemovesItFromDSSAndStore(t *testing.T) {
 
 	require.NoError(t, service.DeleteOperationalIntent(t.Context(), intent.EntityID))
 
-	require.NotContains(t, dssClient.Intents, intent.EntityID)
+	_, registered := dssClient.OperationalIntent(intent.EntityID)
+	require.False(t, registered)
 	_, err := service.Intents.Get(t.Context(), intent.EntityID)
 	require.ErrorIs(t, err, scd.ErrNotFound)
 }
@@ -53,7 +54,8 @@ func TestDeleteOperationalIntentKeepsItWhenDSSRefuses(t *testing.T) {
 	err := service.DeleteOperationalIntent(t.Context(), intent.EntityID)
 
 	require.Error(t, err)
-	require.Contains(t, dssClient.Intents, intent.EntityID)
+	_, registered := dssClient.OperationalIntent(intent.EntityID)
+	require.True(t, registered)
 	stored, err := service.Intents.Get(t.Context(), intent.EntityID)
 	require.NoError(t, err)
 	require.Equal(t, intent, stored)
@@ -62,7 +64,7 @@ func TestDeleteOperationalIntentKeepsItWhenDSSRefuses(t *testing.T) {
 func TestDeleteOperationalIntentUnknownIDSucceeds(t *testing.T) {
 	service, _ := newService()
 
-	err := service.DeleteOperationalIntent(t.Context(), newEntityID())
+	err := service.DeleteOperationalIntent(t.Context(), scdtest.NewEntityID())
 
 	require.NoError(t, err)
 }

@@ -6,7 +6,7 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/internal/db"
-	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +48,7 @@ func TestGetAllFlights(t *testing.T) {
 
 	flight1 := db.FlightPlan{
 		ID:       uuid.New(),
-		EntityID: scdussv1.EntityID(uuid.New().String()),
+		EntityID: scdtest.NewEntityID(),
 	}
 	store.SaveFlight(flight1)
 	saved := slices.Collect(store.GetAllFlights())
@@ -56,7 +56,7 @@ func TestGetAllFlights(t *testing.T) {
 
 	flight2 := db.FlightPlan{
 		ID:       uuid.New(),
-		EntityID: scdussv1.EntityID(uuid.New().String()),
+		EntityID: scdtest.NewEntityID(),
 	}
 	store.SaveFlight(flight2)
 	saved = slices.Collect(store.GetAllFlights())

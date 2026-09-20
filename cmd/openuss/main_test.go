@@ -132,15 +132,16 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	intents := scd.NewInMemoryIntentStore()
 	handler, err := main.NewPlanningHandler(dummy, intents)
 	require.NoError(t, err)
-	dssClient := handler.SCD.DSS.(*dss.UTMClient)
+	service := handler.SCD.(*scd.Service)
+	dssClient := service.DSS.(*dss.UTMClient)
 	require.Equal(t, "http://dss.example.com:8080/blah", dssClient.BaseURL)
 	require.Equal(t, dummy, dssClient.Client.TokenSource)
 	require.Equal(t, httpclient.DefaultTimeout, dssClient.Client.HTTP.HTTP.Timeout)
-	peerClient := handler.SCD.Peer.(*peer.UTMClient)
+	peerClient := service.Peer.(*peer.UTMClient)
 	require.Same(t, dssClient.Client, peerClient.Client)
 	require.IsType(t, &db.InMemoryDB{}, handler.DB)
-	require.Same(t, intents, handler.SCD.Intents)
-	require.EqualValues(t, "the-uss-base-url", handler.SCD.USSBaseURL)
+	require.Same(t, intents, service.Intents)
+	require.EqualValues(t, "the-uss-base-url", service.USSBaseURL)
 }
 
 func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
@@ -150,11 +151,12 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	intents := scd.NewInMemoryIntentStore()
 	handler, err := main.NewPlanningHandler(dummy, intents)
 	require.NoError(t, err)
-	require.IsType(t, &dss.InMemoryDSS{}, handler.SCD.DSS)
-	require.IsType(t, &peer.UTMClient{}, handler.SCD.Peer)
+	service := handler.SCD.(*scd.Service)
+	require.IsType(t, &dss.InMemoryDSS{}, service.DSS)
+	require.IsType(t, &peer.UTMClient{}, service.Peer)
 	require.IsType(t, &db.InMemoryDB{}, handler.DB)
-	require.Same(t, intents, handler.SCD.Intents)
-	require.EqualValues(t, "the-uss-base-url", handler.SCD.USSBaseURL)
+	require.Same(t, intents, service.Intents)
+	require.EqualValues(t, "the-uss-base-url", service.USSBaseURL)
 }
 
 func TestNewDummyTokenSource(t *testing.T) {

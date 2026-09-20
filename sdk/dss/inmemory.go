@@ -3,20 +3,22 @@ package dss
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
 type InMemoryDSS struct {
-	Intents       map[scdussv1.EntityID]scdussv1.OperationalIntent
-	Subscriptions map[scdussv1.SubscriptionID]scdussv1.Subscription
+	intents       map[scdussv1.EntityID]scdussv1.OperationalIntent
+	subscriptions map[scdussv1.SubscriptionID]scdussv1.Subscription
 }
 
 func NewInMemoryDSS() *InMemoryDSS {
 	return &InMemoryDSS{
-		Intents:       map[scdussv1.EntityID]scdussv1.OperationalIntent{},
-		Subscriptions: map[scdussv1.SubscriptionID]scdussv1.Subscription{},
+		intents:       map[scdussv1.EntityID]scdussv1.OperationalIntent{},
+		subscriptions: map[scdussv1.SubscriptionID]scdussv1.Subscription{},
 	}
 }
 
@@ -48,22 +50,16 @@ func (d *InMemoryDSS) createOperationalIntentReference(
 			Version:         1,
 			State:           params.State,
 			Ovn:             ovn,
-			TimeStart: scdussv1.Time{
-				Value:  params.Extents[0].TimeStart.Value,
-				Format: "RFC3339",
-			},
-			TimeEnd: scdussv1.Time{
-				Value:  params.Extents[0].TimeEnd.Value,
-				Format: "RFC3339",
-			},
-			UssBaseUrl: params.UssBaseUrl,
+			TimeStart:       *params.Extents[0].TimeStart,
+			TimeEnd:         *params.Extents[0].TimeEnd,
+			UssBaseUrl:      params.UssBaseUrl,
 		},
 		Details: scdussv1.OperationalIntentDetails{
 			Volumes: &params.Extents,
 		},
 	}
 	intent.Reference.SubscriptionId = d.createImplicitSubscription(params.NewSubscription, id)
-	d.Intents[intent.Reference.Id] = intent
+	d.intents[intent.Reference.Id] = intent
 	return intent.Reference
 }
 
@@ -81,7 +77,7 @@ func (d *InMemoryDSS) createImplicitSubscription(
 		NotifyForOperationalIntents: new(true),
 		DependentOperationalIntents: &[]scdussv1.EntityID{dependentIntent},
 	}
-	d.Subscriptions[subscription.Id] = subscription
+	d.subscriptions[subscription.Id] = subscription
 	return subscription.Id
 }
 
@@ -91,7 +87,7 @@ func (d *InMemoryDSS) DeleteOperationalIntentReference(
 	ovn scdussv1.EntityOVN,
 ) (response scdussv1.ChangeOperationalIntentReferenceResponse, err error) {
 	mustHaveContext(ctx)
-	intent, ok := d.Intents[id]
+	intent, ok := d.intents[id]
 	if !ok {
 		err = fmt.Errorf("dss: operational intent not found %v", id)
 		return
@@ -100,12 +96,28 @@ func (d *InMemoryDSS) DeleteOperationalIntentReference(
 		err = fmt.Errorf("dss: supplied OVN does not match")
 		return
 	}
-	delete(d.Intents, id)
-	return scdussv1.ChangeOperationalIntentReferenceResponse{}, nil
+	delete(d.intents, id)
+	return scdussv1.ChangeOperationalIntentReferenceResponse{
+		OperationalIntentReference: intent.Reference,
+	}, nil
 }
 
 func mustHaveContext(ctx context.Context) {
 	if ctx == nil {
 		panic("inmemory dss: missing Context")
 	}
+}
+
+func (d *InMemoryDSS) OperationalIntent(id scdussv1.EntityID) (scdussv1.OperationalIntent, bool) {
+	intent, found := d.intents[id]
+	return intent, found
+}
+
+func (d *InMemoryDSS) OperationalIntents() []scdussv1.OperationalIntent {
+	return slices.Collect(maps.Values(d.intents))
+}
+
+func (d *InMemoryDSS) Subscription(id scdussv1.SubscriptionID) (scdussv1.Subscription, bool) {
+	subscription, found := d.subscriptions[id]
+	return subscription, found
 }

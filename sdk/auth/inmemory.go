@@ -9,7 +9,7 @@ import (
 )
 
 type InMemoryTokenSource struct {
-	Error error
+	err error
 }
 
 func NewInMemoryTokenSource() *InMemoryTokenSource {
@@ -17,11 +17,11 @@ func NewInMemoryTokenSource() *InMemoryTokenSource {
 }
 
 func NewInMemoryErrorTokenSource(err error) *InMemoryTokenSource {
-	return &InMemoryTokenSource{Error: err}
+	return &InMemoryTokenSource{err: err}
 }
 
 func (t *InMemoryTokenSource) Token(_ context.Context, audience string, scopes ...api.RequiredScope) (string, error) {
 	scope := strings.Join(util.Map(scopes, util.TrimString), ",")
 	token := "audience=" + audience + "&scopes=" + scope
-	return token, t.Error
+	return token, t.err
 }

@@ -2,9 +2,14 @@ package scdtest
 
 import (
 	"time"
+	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
 )
+
+func NewEntityID() scdussv1.EntityID {
+	return scdussv1.EntityID(uuid.New().String())
+}
 
 func NewVolumes4D() []scdussv1.Volume4D {
 	timeStart := time.Now().Add(time.Hour)

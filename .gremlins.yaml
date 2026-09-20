@@ -6,7 +6,6 @@ unleash:
     - sdk/api/
     - sdk/auth/inmemory.go
     - sdk/dss/inmemory.go
-    - sdk/peer/inmemory.go
     - test/
 
 mutants:

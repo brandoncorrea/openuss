@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"uuid"
 
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/scdtest"
 	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 
 func TestGetOperationalIntentDetails(t *testing.T) {
 	baseURL := scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm")
-	entityID := scdussv1.EntityID(uuid.New().String())
+	entityID := scdtest.NewEntityID()
 	tokens := auth.NewInMemoryTokenSource()
 
 	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

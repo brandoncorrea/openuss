@@ -2,27 +2,22 @@ package scd_test
 
 import (
 	"testing"
-	"uuid"
 
-	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/scd"
+	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )
 
-func newEntityID() scdussv1.EntityID {
-	return scdussv1.EntityID(uuid.New().String())
-}
-
 func newIntent() scd.OperationalIntent {
 	return scd.OperationalIntent{
-		EntityID: newEntityID(),
+		EntityID: scdtest.NewEntityID(),
 	}
 }
 
 func TestGetUnknownIntentIsNotFound(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 
-	stored, err := store.Get(t.Context(), newEntityID())
+	stored, err := store.Get(t.Context(), scdtest.NewEntityID())
 
 	require.ErrorIs(t, err, scd.ErrNotFound)
 	require.Zero(t, stored)
@@ -70,5 +65,5 @@ func TestListReturnsEveryIntent(t *testing.T) {
 func TestDeleteUnknownIntentSucceeds(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 
-	require.NoError(t, store.Delete(t.Context(), newEntityID()))
+	require.NoError(t, store.Delete(t.Context(), scdtest.NewEntityID()))
 }
