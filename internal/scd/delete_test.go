@@ -13,7 +13,8 @@ import (
 
 func newService() (*scd.Service, *dss.InMemoryDSS) {
 	dssClient := dss.NewInMemoryDSS()
-	return scd.New(dssClient, scd.NewInMemoryIntentStore()), dssClient
+	service := scd.New(dssClient, nil, scd.NewInMemoryIntentStore(), ussBaseURL)
+	return service, dssClient
 }
 
 func newCoordinatedIntent(t *testing.T, service *scd.Service) scd.OperationalIntent {

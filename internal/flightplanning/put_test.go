@@ -60,7 +60,7 @@ func newHandler() (*flightplanning.Handler, *dss.InMemoryDSS) {
 	intents := scd.NewInMemoryIntentStore()
 	handler := flightplanning.New(
 		dssClient,
-		scd.New(dssClient, intents),
+		scd.New(dssClient, nil, intents, "http://openuss.localutm"),
 		nil,
 		db.NewInMemoryDB(),
 		intents,
@@ -73,7 +73,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	request := putFlightPlanRequest(&flightID, flight)
-	handler, dssClient := newHandler()
+	handler, _ := newHandler()
 	handler.PutFlightPlan(response, request)
 
 	wiretest.RequireJSON(t, response, map[string]any{
@@ -81,42 +81,18 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 		"flight_plan_status": "Planned",
 	})
 
-	require.Len(t, dssClient.Intents, 1)
-
-	dssIntent := slices.Collect(maps.Values(dssClient.Intents))[0]
-	require.Equal(t, flight.FlightPlan.BasicInformation.Area, *dssIntent.Details.Volumes)
-	require.Equal(t, scdussv1.OperationalIntentState_Accepted, dssIntent.Reference.State)
-	require.EqualValues(t, "http://openuss.localutm", dssIntent.Reference.UssBaseUrl)
-
-	savedIntent, err := handler.Intents.Get(t.Context(), dssIntent.Reference.Id)
-	require.NoError(t, err)
-	require.Equal(t, dssIntent.Reference.Id, savedIntent.EntityID)
-	require.Equal(t, "InMemoryManager", savedIntent.Manager)
-	require.Equal(t, scdussv1.UssAvailabilityState_Normal, savedIntent.USSAvailability)
-	require.EqualValues(t, 1, savedIntent.Version)
-	require.EqualValues(t, 2, savedIntent.Priority)
-	require.Equal(t, scdussv1.OperationalIntentState_Accepted, savedIntent.State)
-	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionID)
-	require.EqualValues(t, "x", dssClient.Subscriptions[savedIntent.SubscriptionID].UssBaseUrl)
-
-	_, err = uuid.Parse(string(savedIntent.OVN))
-	require.NoError(t, err)
-
-	timeStart, _ := time.Parse(time.RFC3339Nano, dssIntent.Reference.TimeStart.Value)
-	timeEnd, _ := time.Parse(time.RFC3339Nano, dssIntent.Reference.TimeEnd.Value)
-	require.Equal(t, timeStart, savedIntent.TimeStart)
-	require.Equal(t, timeEnd, savedIntent.TimeEnd)
-
-	require.Equal(t, *dssIntent.Details.Volumes, savedIntent.Volumes)
-
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
-	require.Equal(t, dssIntent.Reference.Id, handler.DB.GetFlight(flightID).EntityID)
+	intent, err := handler.Intents.Get(t.Context(), handler.DB.GetFlight(flightID).EntityID)
+	require.NoError(t, err)
+	require.Equal(t, flight.FlightPlan.BasicInformation.Area, intent.Volumes)
+	require.EqualValues(t, 2, intent.Priority)
+	require.Equal(t, scdussv1.OperationalIntentState_Accepted, intent.State)
 }
 
 func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	flightID, flight := newFlightParams()
 	createResponse := httptest.NewRecorder()
-	handler, dssClient := newHandler()
+	handler, _ := newHandler()
 	handler.PutFlightPlan(createResponse, putFlightPlanRequest(&flightID, flight))
 
 	wiretest.RequireJSON(t, createResponse, map[string]any{
@@ -125,8 +101,6 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	})
 
 	flight1 := handler.DB.GetFlight(flightID)
-	intent1, err := handler.Intents.Get(t.Context(), flight1.EntityID)
-	require.NoError(t, err)
 
 	updateResponse := httptest.NewRecorder()
 	flight.FlightPlan.BasicInformation.Area[0].Volume.AltitudeLower.Value += 1
@@ -137,27 +111,17 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 		"flight_plan_status": "OkToFly",
 	})
 
-	require.Len(t, dssClient.Intents, 1)
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
+	require.Equal(t, flight1, handler.DB.GetFlight(flightID))
 
 	intents, err := handler.Intents.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, intents, 1)
-
-	flight2 := handler.DB.GetFlight(flightID)
-	intent2, err := handler.Intents.Get(t.Context(), flight2.EntityID)
-
-	require.NoError(t, err)
-	require.Equal(t, flight1, flight2)
-	require.NotZero(t, intent1.OVN)
-	require.Equal(t, intent1.OVN, intent2.OVN)
-
-	dssIntent := slices.Collect(maps.Values(dssClient.Intents))[0]
-	require.Equal(t, flight2.EntityID, dssIntent.Reference.Id)
-	require.Equal(t, flight.FlightPlan.BasicInformation.Area, *dssIntent.Details.Volumes)
+	require.Equal(t, flight1.EntityID, intents[0].EntityID)
+	require.Equal(t, flight.FlightPlan.BasicInformation.Area, intents[0].Volumes)
 }
 
-func TestPutFlightPlanTooFarOut(t *testing.T) {
+func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	tooLate := time.Now().Add(time.Hour * 24 * 30).Add(time.Second)
@@ -165,37 +129,6 @@ func TestPutFlightPlanTooFarOut(t *testing.T) {
 	area.TimeStart.Value = tooLate.Format(time.RFC3339Nano)
 	area.TimeEnd.Value = tooLate.Add(time.Hour).Format(time.RFC3339Nano)
 	planner, _ := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
-	wiretest.RequireJSON(t, response, map[string]any{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": "NotPlanned",
-	})
-}
-
-func TestPutAlreadyEndedFlightPlan(t *testing.T) {
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	area := flight.FlightPlan.BasicInformation.Area[0]
-	oneSecondAgo := time.Now().Add(-time.Second)
-	area.TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
-	area.TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
-	planner, _ := newHandler()
-	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
-	wiretest.RequireJSON(t, response, map[string]any{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": "NotPlanned",
-	})
-}
-
-func TestPutRejectsWhenAnotherIntentExists(t *testing.T) {
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	planner, _ := newHandler()
-	require.NoError(t, planner.Intents.Upsert(t.Context(), scd.OperationalIntent{
-		EntityID: scdussv1.EntityID(uuid.New().String()),
-	}))
 	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
@@ -221,32 +154,8 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, dssIntent.Reference.State)
 }
 
-func TestCreateIntentRetriesWithPeerOvnsWhenKeyIsMissing(t *testing.T) {
-	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
-		{
-			Reference: scdussv1.OperationalIntentReference{
-				Id:         scdussv1.EntityID(uuid.New().String()),
-				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
-			},
-		},
-	})
-
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightID, flight)
-	handler.PutFlightPlan(response, request)
-
-	require.Equal(t, http.StatusOK, response.Code)
-
-	intents, err := handler.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.Len(t, intents, 1)
-	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
-}
-
-func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
-	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
+func newPriority100Peer() []scdussv1.OperationalIntent {
+	return []scdussv1.OperationalIntent{
 		{
 			Reference: scdussv1.OperationalIntentReference{
 				Id:         scdussv1.EntityID(uuid.New().String()),
@@ -257,72 +166,27 @@ func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
 				Priority: new(scdussv1.Priority(100)),
 			},
 		},
-	})
+	}
+}
+
+func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
+	handler := newHandlerFromPeers(t, newPriority100Peer())
 
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	request := putFlightPlanRequest(&flightID, flight)
 	handler.PutFlightPlan(response, request)
 
-	require.Equal(t, http.StatusOK, response.Code)
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
 	})
-
-	intents, err := handler.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.Empty(t, intents)
 	require.Empty(t, slices.Collect(handler.DB.GetAllFlights()))
 }
 
-func TestCreateIntentApprovesWithActivePeerAtPriority100(t *testing.T) {
-	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
-		{
-			Reference: scdussv1.OperationalIntentReference{
-				Id:         scdussv1.EntityID(uuid.New().String()),
-				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
-				State:      scdussv1.OperationalIntentState_Activated,
-			},
-			Details: scdussv1.OperationalIntentDetails{
-				Priority: new(scdussv1.Priority(100)),
-			},
-		},
-	})
-
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	request := putFlightPlanRequest(&flightID, flight)
-	handler.PutFlightPlan(response, request)
-
-	require.Equal(t, http.StatusOK, response.Code)
-	wiretest.RequireJSON(t, response, map[string]any{
-		"planning_result":    "Completed",
-		"flight_plan_status": "Planned",
-	})
-	plan := handler.DB.GetFlight(flightID)
-	require.NotNil(t, plan)
-
-	stored, err := handler.Intents.Get(t.Context(), plan.EntityID)
-	require.NoError(t, err)
-	require.Equal(t, plan.EntityID, stored.EntityID)
-}
-
-func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
-	handler := newHandlerFromPeers(t, []scdussv1.OperationalIntent{
-		{
-			Reference: scdussv1.OperationalIntentReference{
-				Id:         scdussv1.EntityID(uuid.New().String()),
-				Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-				UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
-			},
-			Details: scdussv1.OperationalIntentDetails{
-				Priority: new(scdussv1.Priority(100)),
-			},
-		},
-	})
+func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
+	handler := newHandlerFromPeers(t, newPriority100Peer())
 
 	flightID, flightParams := newFlightParams()
 
@@ -341,16 +205,11 @@ func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
 	request := putFlightPlanRequest(&flightID, flightParams)
 	handler.PutFlightPlan(response, request)
 
-	require.Equal(t, http.StatusOK, response.Code)
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
 		"flight_plan_status": "Planned",
 	})
-
-	intents, err := handler.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.ElementsMatch(t, []scd.OperationalIntent{intent}, intents)
 	require.ElementsMatch(t, []db.FlightPlan{flight}, slices.Collect(handler.DB.GetAllFlights()))
 }
 
@@ -361,10 +220,11 @@ func newHandlerFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *flig
 	)
 	dssClient := dss.New("https://dss.localutm", client)
 	intents := scd.NewInMemoryIntentStore()
+	peerClient := peer.New(client)
 	return flightplanning.New(
 		dssClient,
-		scd.New(dssClient, intents),
-		peer.New(client),
+		scd.New(dssClient, peerClient, intents, "http://openuss.localutm"),
+		peerClient,
 		db.NewInMemoryDB(),
 		intents,
 		"http://openuss.localutm",

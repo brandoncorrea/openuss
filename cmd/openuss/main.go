@@ -138,7 +138,7 @@ func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flig
 	db := db.NewInMemoryDB()
 	return flightplanning.New(
 		dssClient,
-		scd.New(dssClient, intents),
+		scd.New(dssClient, peer, intents, ussBaseURL),
 		peer,
 		db,
 		intents,

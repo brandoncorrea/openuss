@@ -138,6 +138,7 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	require.IsType(t, &db.InMemoryDB{}, handler.DB)
 	require.Same(t, intents, handler.Intents)
 	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
+	require.EqualValues(t, "the-uss-base-url", handler.SCD.USSBaseURL)
 }
 
 func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
@@ -151,6 +152,7 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
 	require.IsType(t, &db.InMemoryDB{}, handler.DB)
 	require.Same(t, intents, handler.Intents)
+	require.Same(t, handler.Peer, handler.SCD.Peer)
 	require.Same(t, handler.DSS, handler.SCD.DSS)
 	require.Same(t, handler.Intents, handler.SCD.Intents)
 	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
