@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	main "bwawan.com/openuss/cmd/openuss"
-	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/logging/logtest"
 	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/httpclient"
 	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/scd"
 )
 

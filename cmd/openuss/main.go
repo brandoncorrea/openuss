@@ -11,18 +11,18 @@ import (
 	"syscall"
 	"time"
 
-	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/httplog"
 	"bwawan.com/openuss/internal/logging"
-	"bwawan.com/openuss/internal/operations"
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
-	"bwawan.com/openuss/internal/versioning"
 	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/qualifier/flightplanning"
+	"bwawan.com/openuss/sdk/qualifier/versioning"
 	"bwawan.com/openuss/sdk/scd"
+	"bwawan.com/openuss/sdk/uss"
 	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/joho/godotenv"
 )
@@ -121,7 +121,7 @@ func createRouter(intents scd.IntentStore, planning router.FlightPlanning) http.
 	return router.New(
 		versioning.New(),
 		planning,
-		operations.New(intents),
+		uss.New(intents),
 	)
 }
 

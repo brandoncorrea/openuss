@@ -1,4 +1,4 @@
-package operations
+package uss
 
 import "bwawan.com/openuss/sdk/scd"
 

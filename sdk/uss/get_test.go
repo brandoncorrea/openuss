@@ -1,4 +1,4 @@
-package operations_test
+package uss_test
 
 import (
 	"encoding/json/v2"
@@ -8,15 +8,15 @@ import (
 	"time"
 	"uuid"
 
-	"bwawan.com/openuss/internal/operations"
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
+	"bwawan.com/openuss/sdk/uss"
 	"github.com/stretchr/testify/require"
 )
 
-func newHandler() *operations.Handler {
-	return operations.New(scd.NewInMemoryIntentStore())
+func newHandler() *uss.Handler {
+	return uss.New(scd.NewInMemoryIntentStore())
 }
 
 func TestGetOperationalIntentMissingEntityID(t *testing.T) {

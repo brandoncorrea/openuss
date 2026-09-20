@@ -4,8 +4,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"bwawan.com/openuss/internal/versioning"
-	"bwawan.com/openuss/internal/wiretest"
+	"bwawan.com/openuss/sdk/internal/wiretest"
+	"bwawan.com/openuss/sdk/qualifier/versioning"
 )
 
 func TestGetVersion(t *testing.T) {

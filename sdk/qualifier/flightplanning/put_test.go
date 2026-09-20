@@ -9,9 +9,9 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/flightplanning"
-	"bwawan.com/openuss/internal/wiretest"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/internal/wiretest"
+	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/flightplanning"
+	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )

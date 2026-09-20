@@ -4,8 +4,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"bwawan.com/openuss/internal/flightplanning"
-	"bwawan.com/openuss/internal/wiretest"
+	"bwawan.com/openuss/sdk/internal/wiretest"
+	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 )
 
 func TestClearAreaRequest(t *testing.T) {
