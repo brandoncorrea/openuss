@@ -1,8 +1,8 @@
 package db
 
 import (
-	"iter"
 	"maps"
+	"slices"
 	"uuid"
 )
 
@@ -32,6 +32,6 @@ func (s *InMemoryDB) DeleteFlight(id uuid.UUID) {
 	delete(s.Flights, id)
 }
 
-func (s *InMemoryDB) GetAllFlights() iter.Seq[FlightPlan] {
-	return maps.Values(s.Flights)
+func (s *InMemoryDB) GetAllFlights() []FlightPlan {
+	return slices.Collect(maps.Values(s.Flights))
 }

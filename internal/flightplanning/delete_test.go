@@ -12,9 +12,7 @@ import (
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/wiretest"
 	"bwawan.com/openuss/sdk/api/scdussv1"
-	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,79 +24,63 @@ func newDeleteRequest(flightPlanID *string) *http.Request {
 	return request
 }
 
-func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan {
-	id := scdtest.NewEntityID()
-	params := scdussv1.PutOperationalIntentReferenceParameters{
-		Extents: scdtest.NewVolumes4D(),
-	}
-	result, _ := scdService(t, handler).DSS.PutOperationalIntentReference(t.Context(), id, nil, params)
-	reference := result.OperationalIntentReference
-	intent := scd.OperationalIntent{
-		EntityID: reference.Id,
-		OVN:      *reference.Ovn,
-	}
+func newSavedFlight(handler *flightplanning.Handler) db.FlightPlan {
 	flight := db.FlightPlan{
 		ID:       uuid.New(),
-		EntityID: intent.EntityID,
+		EntityID: scdtest.NewEntityID(),
 	}
-	require.NoError(t, scdService(t, handler).Intents.Upsert(t.Context(), intent))
 	handler.DB.SaveFlight(flight)
 	return flight
 }
 
 func TestDeleteFlightPlanSucceeds(t *testing.T) {
-	handler, dssClient := newHandler()
-	flight := newFlightPlan(t, handler)
+	var deleted scdussv1.EntityID
+	coordination := scdtest.Stub{
+		DeleteFn: func(_ context.Context, id scdussv1.EntityID) error {
+			deleted = id
+			return nil
+		},
+	}
+	handler := flightplanning.New(coordination, db.NewInMemoryDB())
+	flight := newSavedFlight(handler)
 
 	recorder := httptest.NewRecorder()
-	request := newDeleteRequest(new(flight.ID.String()))
-	handler.DeleteFlightPlan(recorder, request)
+	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(flight.ID.String())))
 
-	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Nil(t, handler.DB.GetFlight(flight.ID))
-
-	_, err := scdService(t, handler).Intents.Get(t.Context(), flight.EntityID)
-	require.ErrorIs(t, err, scd.ErrNotFound)
-
-	_, registered := dssClient.OperationalIntent(flight.EntityID)
-	require.False(t, registered)
 	wiretest.RequireJSON(t, recorder, map[string]any{
 		"flight_plan_status": "Closed",
 		"planning_result":    "Completed",
 	})
+	require.Equal(t, flight.EntityID, deleted)
+	require.Nil(t, handler.DB.GetFlight(flight.ID))
 }
 
 func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
+	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryDB())
+
 	recorder := httptest.NewRecorder()
-	request := newDeleteRequest(nil)
-	handler, _ := newHandler()
-	handler.DeleteFlightPlan(recorder, request)
+	handler.DeleteFlightPlan(recorder, newDeleteRequest(nil))
+
 	require.Equal(t, http.StatusBadRequest, recorder.Code)
 }
 
 func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
+	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryDB())
+
 	recorder := httptest.NewRecorder()
-	id := new(uuid.New().String())
-	request := newDeleteRequest(id)
-	request.SetPathValue("flight_plan_id", uuid.New().String())
-	handler, _ := newHandler()
-	handler.DeleteFlightPlan(recorder, request)
+	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(uuid.New().String())))
+
 	require.Equal(t, http.StatusNotFound, recorder.Code)
 }
 
 func TestDeleteFlightPlanFailsWhenCoordinationFails(t *testing.T) {
-	flight := db.FlightPlan{
-		ID:       uuid.New(),
-		EntityID: scdtest.NewEntityID(),
-	}
 	unavailable := scdtest.Stub{
-		DeleteFn: func(_ context.Context, id scdussv1.EntityID) error {
-			assert.Equal(t, flight.EntityID, id)
+		DeleteFn: func(context.Context, scdussv1.EntityID) error {
 			return errors.New("dss unavailable")
 		},
 	}
 	handler := flightplanning.New(unavailable, db.NewInMemoryDB())
-	handler.DB.SaveFlight(flight)
+	flight := newSavedFlight(handler)
 
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(flight.ID.String())))

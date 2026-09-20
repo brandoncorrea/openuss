@@ -1,7 +1,6 @@
 package db_test
 
 import (
-	"slices"
 	"testing"
 	"uuid"
 
@@ -44,21 +43,19 @@ func TestDeleteSavedFlight(t *testing.T) {
 
 func TestGetAllFlights(t *testing.T) {
 	store := db.NewInMemoryDB()
-	require.Empty(t, slices.Collect(store.GetAllFlights()))
+	require.Empty(t, store.GetAllFlights())
 
 	flight1 := db.FlightPlan{
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
 	store.SaveFlight(flight1)
-	saved := slices.Collect(store.GetAllFlights())
-	require.Equal(t, []db.FlightPlan{flight1}, saved)
+	require.Equal(t, []db.FlightPlan{flight1}, store.GetAllFlights())
 
 	flight2 := db.FlightPlan{
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
 	store.SaveFlight(flight2)
-	saved = slices.Collect(store.GetAllFlights())
-	require.ElementsMatch(t, []db.FlightPlan{flight1, flight2}, saved)
+	require.ElementsMatch(t, []db.FlightPlan{flight1, flight2}, store.GetAllFlights())
 }

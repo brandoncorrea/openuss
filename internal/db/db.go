@@ -1,7 +1,6 @@
 package db
 
 import (
-	"iter"
 	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
@@ -11,7 +10,7 @@ type DB interface {
 	SaveFlight(FlightPlan) error
 	GetFlight(uuid.UUID) *FlightPlan
 	DeleteFlight(uuid.UUID)
-	GetAllFlights() iter.Seq[FlightPlan]
+	GetAllFlights() []FlightPlan
 }
 
 type FlightPlan struct {
