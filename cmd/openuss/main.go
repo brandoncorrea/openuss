@@ -112,12 +112,12 @@ func NewTokenSource() (auth.TokenSource, error) {
 	return auth.NewDummyOAuth(endpoint, sub, nil)
 }
 
-func NewHTTPHandler(intents scd.IntentStore, planning router.FlightPlanning, logger *slog.Logger) http.Handler {
+func NewHTTPHandler(intents scd.IntentStore, planning router.Registrar, logger *slog.Logger) http.Handler {
 	routes := createRouter(intents, planning)
 	return httplog.Middleware(logger)(routes)
 }
 
-func createRouter(intents scd.IntentStore, planning router.FlightPlanning) http.Handler {
+func createRouter(intents scd.IntentStore, planning router.Registrar) http.Handler {
 	return router.New(
 		versioning.New(),
 		planning,

@@ -9,99 +9,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type FakeVersioning struct{}
-type FakeFlightPlanning struct{}
-type FakeOperations struct{}
-
-func RespondText(w http.ResponseWriter, content string) {
-	w.Write([]byte(content))
+type textRoute struct {
+	pattern string
+	text    string
 }
 
-func (*FakeVersioning) GetVersion(w http.ResponseWriter, r *http.Request) {
-	RespondText(w, "GetVersion")
+func (r textRoute) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc(r.pattern, func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(r.text))
+	})
 }
 
-func (*FakeFlightPlanning) GetStatus(w http.ResponseWriter, r *http.Request) {
-	RespondText(w, "GetStatus")
+func serve(handler http.Handler, method, path string) *httptest.ResponseRecorder {
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(method, path, nil))
+	return recorder
 }
 
-func (*FakeFlightPlanning) ClearAreaRequests(w http.ResponseWriter, r *http.Request) {
-	RespondText(w, "ClearAreaRequests")
-}
-
-func (*FakeFlightPlanning) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
-	RespondText(w, "PutFlightPlan: "+r.PathValue("flight_plan_id"))
-}
-
-func (*FakeFlightPlanning) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
-	RespondText(w, "DeleteFlightPlan: "+r.PathValue("flight_plan_id"))
-}
-
-func (*FakeOperations) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
-	RespondText(w, "GetOperationalIntent: "+r.PathValue("entity_id"))
-}
-
-func NewFakeHandler() http.Handler {
-	return router.New(
-		&FakeVersioning{},
-		&FakeFlightPlanning{},
-		&FakeOperations{},
+func TestServesTheRoutesOfEveryRegistrar(t *testing.T) {
+	handler := router.New(
+		textRoute{pattern: "GET /ping", text: "pong"},
+		textRoute{pattern: "POST /echo", text: "echo"},
 	)
+
+	require.Equal(t, "pong", serve(handler, http.MethodGet, "/ping").Body.String())
+	require.Equal(t, "echo", serve(handler, http.MethodPost, "/echo").Body.String())
 }
 
-func TestRoutes(t *testing.T) {
-	type Route struct {
-		Method string
-		Path   string
-		Result string
-	}
+func TestUnregisteredPathIsNotFound(t *testing.T) {
+	handler := router.New(textRoute{pattern: "GET /ping", text: "pong"})
 
-	handler := NewFakeHandler()
-
-	for _, route := range []Route{
-		{
-			Method: http.MethodGet,
-			Path:   "/versioning/versions/astm.f3548.v21",
-			Result: "GetVersion",
-		},
-		{
-			Method: http.MethodGet,
-			Path:   "/flight_planning/v1/status",
-			Result: "GetStatus",
-		},
-		{
-			Method: http.MethodPost,
-			Path:   "/flight_planning/v1/clear_area_requests",
-			Result: "ClearAreaRequests",
-		},
-		{
-			Method: http.MethodPut,
-			Path:   "/flight_planning/v1/flight_plans/FOO_ID",
-			Result: "PutFlightPlan: FOO_ID",
-		},
-		{
-			Method: http.MethodDelete,
-			Path:   "/flight_planning/v1/flight_plans/BAR_ID",
-			Result: "DeleteFlightPlan: BAR_ID",
-		},
-		{
-			Method: http.MethodGet,
-			Path:   "/uss/v1/operational_intents/BAR_ID",
-			Result: "GetOperationalIntent: BAR_ID",
-		},
-	} {
-		t.Run(route.Method+" "+route.Path, func(t *testing.T) {
-			recorder := httptest.NewRecorder()
-			request := httptest.NewRequest(route.Method, route.Path, nil)
-			handler.ServeHTTP(recorder, request)
-			require.Equal(t, route.Result, recorder.Body.String())
-		})
-	}
-}
-
-func TestNotFoundHandler(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/blah", nil)
-	rec := httptest.NewRecorder()
-	NewFakeHandler().ServeHTTP(rec, req)
-	require.Equal(t, http.StatusNotFound, rec.Code)
+	require.Equal(t, http.StatusNotFound, serve(handler, http.MethodGet, "/blah").Code)
 }
