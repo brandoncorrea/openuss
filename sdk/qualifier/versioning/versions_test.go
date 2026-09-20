@@ -11,8 +11,8 @@ import (
 func TestGetVersion(t *testing.T) {
 	response := httptest.NewRecorder()
 	versioning.New().GetVersion(response, nil)
-	wiretest.RequireJSON(t, response, map[string]any{
-		"system_identity": "astm.f3548.v21",
-		"system_version":  "blah",
+	wiretest.RequireJSON(t, response, versioning.GetVersionResponse{
+		SystemIdentity: "astm.f3548.v21",
+		SystemVersion:  "blah",
 	})
 }

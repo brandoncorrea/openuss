@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func RequireJSON(t *testing.T, recorder *httptest.ResponseRecorder, expected map[string]any) {
+func RequireJSON[T any](t *testing.T, recorder *httptest.ResponseRecorder, expected T) {
 	t.Helper()
 	require.Equal(t, http.StatusOK, recorder.Code)
 
@@ -19,7 +19,7 @@ func RequireJSON(t *testing.T, recorder *httptest.ResponseRecorder, expected map
 	require.NoError(t, err)
 	require.Equal(t, "application/json", mediaType)
 
-	var body map[string]any
+	var body T
 	require.NoError(t, json.UnmarshalRead(recorder.Body, &body))
 	require.Equal(t, expected, body)
 }

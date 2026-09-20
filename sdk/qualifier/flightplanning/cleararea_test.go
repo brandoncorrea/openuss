@@ -12,9 +12,9 @@ func TestClearAreaRequest(t *testing.T) {
 	response := httptest.NewRecorder()
 	director := &flightplanning.Handler{}
 	director.ClearAreaRequests(response, nil)
-	wiretest.RequireJSON(t, response, map[string]any{
-		"outcome": map[string]any{
-			"success": true,
+	wiretest.RequireJSON(t, response, flightplanning.ClearAreaResponse{
+		Outcome: flightplanning.ClearAreaOutcome{
+			Success: true,
 		},
 	})
 }

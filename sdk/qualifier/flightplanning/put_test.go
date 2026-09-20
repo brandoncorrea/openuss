@@ -17,25 +17,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newFlightPlanBody() flightplanning.PutFlightPlanBody {
-	return flightplanning.PutFlightPlanBody{
+func newFlightPlanBody() flightplanning.UpsertFlightPlanRequest {
+	return flightplanning.UpsertFlightPlanRequest{
 		RequestID: scdussv1.UUIDv4Format(uuid.New().String()),
 		FlightPlan: flightplanning.FlightPlan{
-			BasicInformation: flightplanning.FlightPlanBasicInformation{
+			BasicInformation: flightplanning.BasicFlightPlanInformation{
 				Area: scdtest.NewVolumes4D(),
 			},
-			F3548: flightplanning.F3548{
+			F3548: flightplanning.ASTMF354821OpIntentInformation{
 				Priority: 2,
 			},
 		},
 	}
 }
 
-func newFlightParams() (uuid.UUID, flightplanning.PutFlightPlanBody) {
+func newFlightParams() (uuid.UUID, flightplanning.UpsertFlightPlanRequest) {
 	return uuid.New(), newFlightPlanBody()
 }
 
-func putFlightPlanRequest(id *uuid.UUID, body flightplanning.PutFlightPlanBody) *http.Request {
+func putFlightPlanRequest(id *uuid.UUID, body flightplanning.UpsertFlightPlanRequest) *http.Request {
 	bytes, err := json.Marshal(body)
 	if err != nil {
 		panic(err)
@@ -73,9 +73,9 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 
-	wiretest.RequireJSON(t, response, map[string]any{
-		"planning_result":    "Completed",
-		"flight_plan_status": "Planned",
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
+		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
 	require.Equal(t, scd.IntentParams{
 		Volumes:  flight.FlightPlan.BasicInformation.Area,
@@ -108,9 +108,9 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 
-	wiretest.RequireJSON(t, response, map[string]any{
-		"planning_result":    "Completed",
-		"flight_plan_status": "OkToFly",
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
+		FlightPlanStatus: flightplanning.FlightPlanStatusOkToFly,
 	})
 	require.Equal(t, existing.EntityID, receivedID)
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, received.Volumes)
@@ -119,7 +119,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 
 func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	flightID, flight := newFlightParams()
-	flight.FlightPlan.BasicInformation.UsageState = "InUse"
+	flight.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
 	var received scd.IntentParams
 	coordination := scdtest.Stub{
 		CreateFn: func(_ context.Context, params scd.IntentParams) (scd.OperationalIntent, error) {
@@ -132,9 +132,9 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 
-	wiretest.RequireJSON(t, response, map[string]any{
-		"planning_result":    "Completed",
-		"flight_plan_status": "Planned",
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
+		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, received.State)
 }
@@ -146,10 +146,9 @@ func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 
-	wiretest.RequireJSON(t, response, map[string]any{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": "NotPlanned",
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultRejected,
+		FlightPlanStatus: flightplanning.FlightPlanStatusNotPlanned,
 	})
 	require.Empty(t, handler.Flights.List())
 }
@@ -161,10 +160,9 @@ func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 
-	wiretest.RequireJSON(t, response, map[string]any{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": "NotPlanned",
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultRejected,
+		FlightPlanStatus: flightplanning.FlightPlanStatusNotPlanned,
 	})
 	require.Empty(t, handler.Flights.List())
 }
@@ -182,10 +180,9 @@ func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flightParams))
 
-	wiretest.RequireJSON(t, response, map[string]any{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": "Planned",
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultRejected,
+		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
 	require.ElementsMatch(t, []flightplanning.FlightPlanRecord{flight}, handler.Flights.List())
 }

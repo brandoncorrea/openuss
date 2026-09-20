@@ -46,9 +46,9 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(flight.ID.String())))
 
-	wiretest.RequireJSON(t, recorder, map[string]any{
-		"flight_plan_status": "Closed",
-		"planning_result":    "Completed",
+	wiretest.RequireJSON(t, recorder, flightplanning.FlightPlanResponse{
+		FlightPlanStatus: flightplanning.FlightPlanStatusClosed,
+		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 	})
 	require.Equal(t, flight.EntityID, deleted)
 	require.Nil(t, handler.Flights.Get(flight.ID))

@@ -8,9 +8,9 @@ import (
 
 func (*Handler) ClearAreaRequests(w http.ResponseWriter, _ *http.Request) {
 	// TODO: Will likely need to actually clear the area
-	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"outcome": map[string]any{
-			"success": true,
+	api.WriteJSON(w, http.StatusOK, ClearAreaResponse{
+		Outcome: ClearAreaOutcome{
+			Success: true,
 		},
 	})
 }

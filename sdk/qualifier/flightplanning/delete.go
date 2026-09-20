@@ -23,9 +23,9 @@ func (h *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Flights.Delete(flight.ID)
-	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"flight_plan_status": "Closed",
-		"planning_result":    "Completed",
+	api.WriteJSON(w, http.StatusOK, FlightPlanResponse{
+		FlightPlanStatus: FlightPlanStatusClosed,
+		PlanningResult:   PlanningActivityResultCompleted,
 	})
 }
 

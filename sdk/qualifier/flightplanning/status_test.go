@@ -12,7 +12,7 @@ func TestGetStatus(t *testing.T) {
 	response := httptest.NewRecorder()
 	director := &flightplanning.Handler{}
 	director.GetStatus(response, nil)
-	wiretest.RequireJSON(t, response, map[string]any{
-		"status": "Ready",
+	wiretest.RequireJSON(t, response, flightplanning.StatusResponse{
+		Status: flightplanning.ServiceStatusReady,
 	})
 }

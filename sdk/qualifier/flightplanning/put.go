@@ -12,14 +12,8 @@ import (
 	"bwawan.com/openuss/sdk/scd"
 )
 
-type PutFlightPlanBody struct {
-	RequestID      scdussv1.UUIDv4Format `json:"request_id"`
-	ExecutionStyle string                `json:"execution_style"`
-	FlightPlan     FlightPlan            `json:"flight_plan"`
-}
-
 func (h *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
-	var body PutFlightPlanBody
+	var body UpsertFlightPlanRequest
 
 	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &body)
@@ -33,7 +27,7 @@ func (h *Handler) putOrRejectFlight(
 	ctx context.Context,
 	flightID uuid.UUID,
 	plan FlightPlan,
-) map[string]string {
+) FlightPlanResponse {
 	existingFlight := h.Flights.Get(flightID)
 
 	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
@@ -42,7 +36,7 @@ func (h *Handler) putOrRejectFlight(
 		return conflictResponse(existingFlight)
 	}
 	if errors.Is(err, scd.ErrRejected) {
-		return rejectionResponse()
+		return conflictResponse(nil)
 	}
 
 	h.Flights.Upsert(FlightPlanRecord{
@@ -66,7 +60,7 @@ func (h *Handler) putIntent(
 
 func toIntentParams(plan FlightPlan) scd.IntentParams {
 	state := scdussv1.OperationalIntentState_Accepted
-	if plan.BasicInformation.UsageState == "InUse" {
+	if plan.BasicInformation.UsageState == UsageStateInUse {
 		state = scdussv1.OperationalIntentState_Activated
 	}
 	return scd.IntentParams{
@@ -76,38 +70,26 @@ func toIntentParams(plan FlightPlan) scd.IntentParams {
 	}
 }
 
-func successResponse(existingFlight *FlightPlanRecord) map[string]string {
+func successResponse(existingFlight *FlightPlanRecord) FlightPlanResponse {
 	// TODO(gap): There's probably some input parameter this should be based off of
-	status := "OkToFly"
+	status := FlightPlanStatusOkToFly
 	if existingFlight == nil {
-		status = "Planned"
+		status = FlightPlanStatusPlanned
 	}
-	return map[string]string{
-		"planning_result":    "Completed",
-		"flight_plan_status": status,
-		// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
-	}
-}
-
-func rejectionResponse() map[string]string {
-	return map[string]string{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": "NotPlanned",
-		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
+	return FlightPlanResponse{
+		PlanningResult:   PlanningActivityResultCompleted,
+		FlightPlanStatus: status,
 	}
 }
 
-func conflictResponse(existingFlight *FlightPlanRecord) map[string]string {
+func conflictResponse(existingFlight *FlightPlanRecord) FlightPlanResponse {
 	// TODO(gap): This check is probably wrong
-	status := "Planned"
+	status := FlightPlanStatusPlanned
 	if existingFlight == nil {
-		status = "NotPlanned"
+		status = FlightPlanStatusNotPlanned
 	}
-	return map[string]string{
-		"activity_result":    "Rejected",
-		"planning_result":    "Rejected",
-		"flight_plan_status": status,
-		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
+	return FlightPlanResponse{
+		PlanningResult:   PlanningActivityResultRejected,
+		FlightPlanStatus: status,
 	}
 }

@@ -13,9 +13,9 @@ func New() *Handler {
 }
 
 func (*Handler) GetVersion(w http.ResponseWriter, _ *http.Request) {
-	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"system_identity": "astm.f3548.v21",
+	api.WriteJSON(w, http.StatusOK, GetVersionResponse{
+		SystemIdentity: "astm.f3548.v21",
 		// TODO(gap): The suite wants system_version to be a populated string, but doesn't enforce anything after that.
-		"system_version": "blah",
+		SystemVersion: "blah",
 	})
 }
