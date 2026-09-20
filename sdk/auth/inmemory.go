@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/internal/util"
 )
 
 type InMemoryTokenSource struct {

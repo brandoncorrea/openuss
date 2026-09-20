@@ -12,14 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	main "bwawan.com/openuss/cmd/openuss"
-	"bwawan.com/openuss/internal/auth"
 	"bwawan.com/openuss/internal/db"
-	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/internal/flightplanning"
-	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/logging/logtest"
-	"bwawan.com/openuss/internal/peer"
-	"bwawan.com/openuss/internal/scd"
+	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/httpclient"
+	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/scd"
 )
 
 func TestListenAddr(t *testing.T) {

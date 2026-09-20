@@ -1,6 +1,6 @@
 package operations
 
-import "bwawan.com/openuss/internal/scd"
+import "bwawan.com/openuss/sdk/scd"
 
 type Handler struct {
 	Intents scd.IntentStore

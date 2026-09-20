@@ -9,12 +9,12 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/auth"
-	"bwawan.com/openuss/internal/dss"
-	"bwawan.com/openuss/internal/util"
-	"bwawan.com/openuss/internal/utmclient"
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/internal/util"
+	"bwawan.com/openuss/sdk/utmclient"
 )
 
 func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.UTMClient {

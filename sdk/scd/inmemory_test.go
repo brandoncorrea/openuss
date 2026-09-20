@@ -4,8 +4,8 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/scd"
 	"github.com/stretchr/testify/require"
 )
 

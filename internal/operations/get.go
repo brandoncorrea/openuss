@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/scd"
 )
 
 func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {

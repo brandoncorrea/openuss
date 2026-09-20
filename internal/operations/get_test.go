@@ -9,9 +9,9 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/internal/operations"
-	"bwawan.com/openuss/internal/scd"
-	"bwawan.com/openuss/internal/scdtest"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/scd"
+	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )
 

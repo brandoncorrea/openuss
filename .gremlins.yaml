@@ -4,9 +4,9 @@ unleash:
   timeout-coefficient: 3
   exclude-files:
     - sdk/api/
-    - internal/auth/inmemory.go
-    - internal/dss/inmemory.go
-    - internal/peer/inmemory.go
+    - sdk/auth/inmemory.go
+    - sdk/dss/inmemory.go
+    - sdk/peer/inmemory.go
     - test/
 
 mutants:

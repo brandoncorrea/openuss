@@ -1,9 +1,9 @@
 package scd
 
 import (
-	"bwawan.com/openuss/internal/dss"
-	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/peer"
 )
 
 type Service struct {

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/auth"
-	"bwawan.com/openuss/internal/peer"
-	"bwawan.com/openuss/internal/utmclient"
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

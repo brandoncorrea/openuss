@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"bwawan.com/openuss/internal/util"
-	"bwawan.com/openuss/internal/utmclient"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/internal/util"
+	"bwawan.com/openuss/sdk/utmclient"
 )
 
 type UTMClient struct {

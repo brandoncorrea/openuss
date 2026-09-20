@@ -3,7 +3,7 @@ package scd_test
 import (
 	"testing"
 
-	"bwawan.com/openuss/internal/scd"
+	"bwawan.com/openuss/sdk/scd"
 	"github.com/stretchr/testify/require"
 )
 

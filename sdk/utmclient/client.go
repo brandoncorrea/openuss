@@ -10,9 +10,9 @@ import (
 	"net/url"
 	"strings"
 
-	"bwawan.com/openuss/internal/auth"
-	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/httpclient"
 )
 
 type Client struct {

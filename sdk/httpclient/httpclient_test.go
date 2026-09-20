@@ -10,8 +10,8 @@ import (
 	"testing/iotest"
 	"time"
 
-	"bwawan.com/openuss/internal/httpclient"
-	"bwawan.com/openuss/internal/wiretest"
+	"bwawan.com/openuss/sdk/httpclient"
+	"bwawan.com/openuss/sdk/internal/wiretest"
 	"github.com/stretchr/testify/require"
 )
 

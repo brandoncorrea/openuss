@@ -7,8 +7,8 @@ import (
 	"time"
 	"uuid"
 
-	"bwawan.com/openuss/internal/dss"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/dss"
 )
 
 func (s *Service) CreateOperationalIntent(

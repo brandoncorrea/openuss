@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"bwawan.com/openuss/internal/httpclient"
-	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/httpclient"
+	"bwawan.com/openuss/sdk/internal/util"
 )
 
 type DummyOAuth struct {

@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"bwawan.com/openuss/internal/auth"
-	"bwawan.com/openuss/internal/httpclient"
-	"bwawan.com/openuss/internal/utmclient"
-	"bwawan.com/openuss/internal/wiretest"
 	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/httpclient"
+	"bwawan.com/openuss/sdk/internal/wiretest"
+	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

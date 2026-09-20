@@ -8,14 +8,14 @@ import (
 	"time"
 	"uuid"
 
-	"bwawan.com/openuss/internal/auth"
-	"bwawan.com/openuss/internal/dss"
-	"bwawan.com/openuss/internal/dss/dsstest"
-	"bwawan.com/openuss/internal/peer"
-	"bwawan.com/openuss/internal/scd"
-	"bwawan.com/openuss/internal/scdtest"
-	"bwawan.com/openuss/internal/utmclient"
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/dss/dsstest"
+	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/scd"
+	"bwawan.com/openuss/sdk/scdtest"
+	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/require"
 )
 

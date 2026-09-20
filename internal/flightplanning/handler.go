@@ -2,7 +2,7 @@ package flightplanning
 
 import (
 	"bwawan.com/openuss/internal/db"
-	"bwawan.com/openuss/internal/scd"
+	"bwawan.com/openuss/sdk/scd"
 )
 
 type Handler struct {
