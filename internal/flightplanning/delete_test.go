@@ -9,6 +9,7 @@ import (
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/flightplanning"
+	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/internal/scdtest"
 	"bwawan.com/openuss/internal/wiretest"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan 
 	}
 	result, _ := handler.DSS.PutOperationalIntentReference(t.Context(), id, nil, params)
 	reference := result.OperationalIntentReference
-	intent := db.OperationalIntent{
+	intent := scd.OperationalIntent{
 		EntityID: reference.Id,
 		OVN:      *reference.Ovn,
 	}
@@ -37,7 +38,7 @@ func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan 
 		ID:       uuid.New(),
 		EntityID: intent.EntityID,
 	}
-	handler.DB.SaveIntent(intent)
+	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
 	handler.DB.SaveFlight(flight)
 	return flight
 }
@@ -52,7 +53,10 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Nil(t, handler.DB.GetFlight(flight.ID))
-	require.Nil(t, handler.DB.GetIntent(flight.EntityID))
+
+	_, err := handler.Intents.Get(t.Context(), flight.EntityID)
+	require.ErrorIs(t, err, scd.ErrNotFound)
+
 	require.NotContains(t, authority.Intents, flight.EntityID)
 	wiretest.RequireJSON(t, recorder, map[string]any{
 		"flight_plan_status": "Closed",
@@ -81,9 +85,12 @@ func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
 func TestDeleteFlightPlanFails(t *testing.T) {
 	handler, authority := newHandler()
 	flight := newFlightPlan(t, handler)
-	intent := handler.DB.GetIntent(flight.EntityID)
+	intent, err := handler.Intents.Get(t.Context(), flight.EntityID)
+	require.NoError(t, err)
+
 	intent.OVN = scdussv1.EntityOVN(uuid.New().String())
-	handler.DB.SaveIntent(*intent)
+
+	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
 
 	recorder := httptest.NewRecorder()
 	request := newDeleteRequest(new(flight.ID.String()))
@@ -91,6 +98,9 @@ func TestDeleteFlightPlanFails(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, flight, *handler.DB.GetFlight(flight.ID))
-	require.Equal(t, intent, handler.DB.GetIntent(flight.EntityID))
+
+	stored, err := handler.Intents.Get(t.Context(), flight.EntityID)
+	require.NoError(t, err)
+	require.Equal(t, intent, stored)
 	require.Contains(t, authority.Intents, flight.EntityID)
 }

@@ -9,14 +9,14 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/internal/api/scdussv1"
-	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/operations"
+	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/internal/scdtest"
 	"github.com/stretchr/testify/require"
 )
 
 func newHandler() *operations.Handler {
-	return operations.New(db.NewInMemoryDB())
+	return operations.New(scd.NewInMemoryIntentStore())
 }
 
 func TestGetOperationalIntentMissingEntityID(t *testing.T) {
@@ -38,7 +38,7 @@ func TestGetOperationalIntentNotExists(t *testing.T) {
 
 func TestGetOperationalIntentSuccess(t *testing.T) {
 	entityID := uuid.New().String()
-	intent := db.OperationalIntent{
+	intent := scd.OperationalIntent{
 		EntityID:        scdussv1.EntityID(entityID),
 		Manager:         "the-manager",
 		USSAvailability: scdussv1.UssAvailabilityState_Normal,
@@ -56,7 +56,7 @@ func TestGetOperationalIntentSuccess(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
 	request.SetPathValue("entity_id", entityID)
 	handler := newHandler()
-	handler.DB.SaveIntent(intent)
+	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
 
 	handler.GetOperationalIntent(recorder, request)
 

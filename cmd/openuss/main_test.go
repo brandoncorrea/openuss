@@ -18,6 +18,7 @@ import (
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/logging/logtest"
+	"bwawan.com/openuss/internal/scd"
 )
 
 func TestListenAddr(t *testing.T) {
@@ -85,7 +86,10 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 func serveThroughNewHTTPHandler(t *testing.T, method, target string) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	logger, logs := logtest.New()
-	handler := main.NewHTTPHandler(db.NewInMemoryDB(), &flightplanning.Handler{}, logger)
+	handler := main.NewHTTPHandler(
+		scd.NewInMemoryIntentStore(),
+		&flightplanning.Handler{},
+		logger)
 
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(method, target, nil))
@@ -115,8 +119,8 @@ func TestNewPlanningHandlerMissingUSSBaseURL(t *testing.T) {
 	t.Setenv("DSS_BASE_URL", "http://dss.example.com")
 	t.Setenv("USS_BASE_URL", "\r\n\t ")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	store := db.NewInMemoryDB()
-	_, err := main.NewPlanningHandler(dummy, store)
+	intents := scd.NewInMemoryIntentStore()
+	_, err := main.NewPlanningHandler(dummy, intents)
 	require.ErrorContains(t, err, "USS_BASE_URL is required")
 }
 
@@ -124,14 +128,15 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	t.Setenv("DSS_BASE_URL", "http://dss.example.com:8080/blah")
 	t.Setenv("USS_BASE_URL", "the-uss-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	store := db.NewInMemoryDB()
-	handler, err := main.NewPlanningHandler(dummy, store)
+	intents := scd.NewInMemoryIntentStore()
+	handler, err := main.NewPlanningHandler(dummy, intents)
 	require.NoError(t, err)
 	authority := handler.DSS.(*dss.DSS)
 	require.Equal(t, "http://dss.example.com:8080/blah", authority.Host)
 	require.Equal(t, dummy, authority.Client.TokenSource)
 	require.Equal(t, httpclient.DefaultTimeout, authority.Client.HTTP.HTTP.Timeout)
-	require.Equal(t, store, handler.DB)
+	require.IsType(t, &db.InMemoryDB{}, handler.DB)
+	require.Same(t, intents, handler.Intents)
 	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
 }
 
@@ -139,11 +144,12 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	t.Setenv("DSS_IMPL", "memory")
 	t.Setenv("USS_BASE_URL", "the-uss-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	store := db.NewInMemoryDB()
-	handler, err := main.NewPlanningHandler(dummy, store)
+	intents := scd.NewInMemoryIntentStore()
+	handler, err := main.NewPlanningHandler(dummy, intents)
 	require.NoError(t, err)
 	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
-	require.Equal(t, store, handler.DB)
+	require.IsType(t, &db.InMemoryDB{}, handler.DB)
+	require.Same(t, intents, handler.Intents)
 	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
 }
 

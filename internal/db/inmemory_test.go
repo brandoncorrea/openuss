@@ -10,60 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetIntentOnEmptyDB(t *testing.T) {
-	store := db.NewInMemoryDB()
-	id := scdussv1.EntityID(uuid.New().String())
-	require.Nil(t, store.GetIntent(id))
-}
-
-func TestDeleteIntentOnEmptyDB(t *testing.T) {
-	store := db.NewInMemoryDB()
-	id := scdussv1.EntityID(uuid.New().String())
-	require.NotPanics(t, func() {
-		store.DeleteIntent(id)
-	})
-}
-
-func TestGetSavedIntent(t *testing.T) {
-	store := db.NewInMemoryDB()
-	intent := db.OperationalIntent{
-		EntityID: scdussv1.EntityID(uuid.New().String()),
-	}
-	require.NoError(t, store.SaveIntent(intent))
-	require.Equal(t, intent, *(store.GetIntent(intent.EntityID)))
-}
-
-func TestDeleteSavedIntent(t *testing.T) {
-	store := db.NewInMemoryDB()
-	id := scdussv1.EntityID(uuid.New().String())
-	intent := db.OperationalIntent{
-		EntityID: id,
-	}
-	require.NoError(t, store.SaveIntent(intent))
-	require.Equal(t, intent, *store.GetIntent(id))
-	store.DeleteIntent(id)
-	require.Nil(t, store.GetIntent(id))
-}
-
-func TestGetAllIntents(t *testing.T) {
-	store := db.NewInMemoryDB()
-	require.Empty(t, slices.Collect(store.GetAllIntents()))
-
-	intent1 := db.OperationalIntent{
-		EntityID: scdussv1.EntityID(uuid.New().String()),
-	}
-	store.SaveIntent(intent1)
-	saved := slices.Collect(store.GetAllIntents())
-	require.Equal(t, []db.OperationalIntent{intent1}, saved)
-
-	intent2 := db.OperationalIntent{
-		EntityID: scdussv1.EntityID(uuid.New().String()),
-	}
-	store.SaveIntent(intent2)
-	saved = slices.Collect(store.GetAllIntents())
-	require.ElementsMatch(t, []db.OperationalIntent{intent1, intent2}, saved)
-}
-
 func TestGetFlightOnEmptyDB(t *testing.T) {
 	store := db.NewInMemoryDB()
 	require.Nil(t, store.GetFlight(uuid.New()))

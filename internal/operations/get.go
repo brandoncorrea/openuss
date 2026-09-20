@@ -1,11 +1,13 @@
 package operations
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"bwawan.com/openuss/internal/api"
 	"bwawan.com/openuss/internal/api/scdussv1"
+	"bwawan.com/openuss/internal/scd"
 )
 
 func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
@@ -14,8 +16,11 @@ func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	intent := h.DB.GetIntent(scdussv1.EntityID(entityID))
-	if intent == nil {
+	// TODO: Missing context
+	intent, err := h.Intents.Get(nil, scdussv1.EntityID(entityID))
+
+	// TODO: What if there is a different kind of error?
+	if errors.Is(err, scd.ErrNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}

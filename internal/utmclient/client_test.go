@@ -63,7 +63,7 @@ func TestDoRequestOptions(t *testing.T) {
 func TestDoUsesHostnameAsAudience(t *testing.T) {
 	tokenSource := auth.NewInMemoryTokenSource()
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		token, _ := tokenSource.Token(nil, "dss.example.com", "scope-1", "scope-2")
+		token, _ := tokenSource.Token(t.Context(), "dss.example.com", "scope-1", "scope-2")
 		assert.Equal(t, "Bearer "+token, r.Header.Get("Authorization"))
 	}
 	requireGetSuccess(t, "http://dss.example.com", handler, "scope-1", "scope-2")

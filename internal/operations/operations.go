@@ -1,11 +1,11 @@
 package operations
 
-import "bwawan.com/openuss/internal/db"
+import "bwawan.com/openuss/internal/scd"
 
 type Handler struct {
-	DB db.DB
+	Intents scd.IntentStore
 }
 
-func New(db db.DB) *Handler {
-	return &Handler{DB: db}
+func New(intents scd.IntentStore) *Handler {
+	return &Handler{Intents: intents}
 }

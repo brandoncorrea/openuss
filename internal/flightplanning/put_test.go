@@ -18,6 +18,7 @@ import (
 	"bwawan.com/openuss/internal/dss/dsstest"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/peer"
+	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/internal/scdtest"
 	"bwawan.com/openuss/internal/utmclient"
 	"bwawan.com/openuss/internal/wiretest"
@@ -56,8 +57,14 @@ func putFlightPlanRequest(id *uuid.UUID, body flightplanning.PutFlightPlanBody) 
 
 func newHandler() (*flightplanning.Handler, *dss.InMemoryDSS) {
 	authority := dss.NewInMemoryDSS()
-	store := db.NewInMemoryDB()
-	return flightplanning.New(authority, nil, store, "http://openuss.localutm"), authority
+	handler := flightplanning.New(
+		authority,
+		nil,
+		db.NewInMemoryDB(),
+		scd.NewInMemoryIntentStore(),
+		"http://openuss.localutm",
+	)
+	return handler, authority
 }
 
 func TestCreateFlightPlanSucceeds(t *testing.T) {
@@ -79,7 +86,8 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, scdussv1.OperationalIntentState_Accepted, dssIntent.Reference.State)
 	require.EqualValues(t, "http://openuss.localutm", dssIntent.Reference.UssBaseUrl)
 
-	savedIntent := handler.DB.GetIntent(dssIntent.Reference.Id)
+	savedIntent, err := handler.Intents.Get(t.Context(), dssIntent.Reference.Id)
+	require.NoError(t, err)
 	require.Equal(t, dssIntent.Reference.Id, savedIntent.EntityID)
 	require.Equal(t, "InMemoryManager", savedIntent.Manager)
 	require.Equal(t, scdussv1.UssAvailabilityState_Normal, savedIntent.USSAvailability)
@@ -89,7 +97,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, dssIntent.Reference.SubscriptionId, savedIntent.SubscriptionID)
 	require.EqualValues(t, "x", authority.Subscriptions[savedIntent.SubscriptionID].UssBaseUrl)
 
-	_, err := uuid.Parse(string(savedIntent.OVN))
+	_, err = uuid.Parse(string(savedIntent.OVN))
 	require.NoError(t, err)
 
 	timeStart, _ := time.Parse(time.RFC3339Nano, dssIntent.Reference.TimeStart.Value)
@@ -115,7 +123,8 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	})
 
 	flight1 := handler.DB.GetFlight(flightID)
-	intent1 := handler.DB.GetIntent(flight1.EntityID)
+	intent1, err := handler.Intents.Get(t.Context(), flight1.EntityID)
+	require.NoError(t, err)
 
 	updateResponse := httptest.NewRecorder()
 	flight.FlightPlan.BasicInformation.Area[0].Volume.AltitudeLower.Value += 1
@@ -128,11 +137,15 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 
 	require.Len(t, authority.Intents, 1)
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
-	require.Len(t, slices.Collect(handler.DB.GetAllIntents()), 1)
+
+	intents, err := handler.Intents.List(t.Context())
+	require.NoError(t, err)
+	require.Len(t, intents, 1)
 
 	flight2 := handler.DB.GetFlight(flightID)
-	intent2 := handler.DB.GetIntent(flight2.EntityID)
+	intent2, err := handler.Intents.Get(t.Context(), flight2.EntityID)
 
+	require.NoError(t, err)
 	require.Equal(t, flight1, flight2)
 	require.NotZero(t, intent1.OVN)
 	require.Equal(t, intent1.OVN, intent2.OVN)
@@ -178,9 +191,9 @@ func TestPutRejectsWhenAnotherIntentExists(t *testing.T) {
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
 	planner, _ := newHandler()
-	planner.DB.SaveIntent(db.OperationalIntent{
+	require.NoError(t, planner.Intents.Upsert(t.Context(), scd.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
-	})
+	}))
 	planner.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
 	wiretest.RequireJSON(t, response, map[string]any{
 		"activity_result":    "Rejected",
@@ -223,7 +236,10 @@ func TestCreateIntentRetriesWithPeerOvnsWhenKeyIsMissing(t *testing.T) {
 	handler.PutFlightPlan(response, request)
 
 	require.Equal(t, http.StatusOK, response.Code)
-	require.Len(t, slices.Collect(handler.DB.GetAllIntents()), 1)
+
+	intents, err := handler.Intents.List(t.Context())
+	require.NoError(t, err)
+	require.Len(t, intents, 1)
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
 }
 
@@ -252,7 +268,10 @@ func TestCreateIntentRejectsWithPeerPriority100(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
 	})
-	require.Empty(t, slices.Collect(handler.DB.GetAllIntents()))
+
+	intents, err := handler.Intents.List(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, intents)
 	require.Empty(t, slices.Collect(handler.DB.GetAllFlights()))
 }
 
@@ -283,7 +302,10 @@ func TestCreateIntentApprovesWithActivePeerAtPriority100(t *testing.T) {
 	})
 	plan := handler.DB.GetFlight(flightID)
 	require.NotNil(t, plan)
-	require.NotNil(t, handler.DB.GetIntent(plan.EntityID))
+
+	stored, err := handler.Intents.Get(t.Context(), plan.EntityID)
+	require.NoError(t, err)
+	require.Equal(t, plan.EntityID, stored.EntityID)
 }
 
 func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
@@ -302,7 +324,7 @@ func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
 
 	flightID, flightParams := newFlightParams()
 
-	intent := db.OperationalIntent{
+	intent := scd.OperationalIntent{
 		EntityID: scdussv1.EntityID(uuid.New().String()),
 		OVN:      scdussv1.EntityOVN(uuid.New().String()),
 	}
@@ -310,7 +332,7 @@ func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
 		ID:       flightID,
 		EntityID: intent.EntityID,
 	}
-	handler.DB.SaveIntent(intent)
+	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
 	handler.DB.SaveFlight(flight)
 
 	response := httptest.NewRecorder()
@@ -323,7 +345,10 @@ func TestUpdateIntentRejectsWithPeerPriority100(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "Planned",
 	})
-	require.ElementsMatch(t, []db.OperationalIntent{intent}, slices.Collect(handler.DB.GetAllIntents()))
+
+	intents, err := handler.Intents.List(t.Context())
+	require.NoError(t, err)
+	require.ElementsMatch(t, []scd.OperationalIntent{intent}, intents)
 	require.ElementsMatch(t, []db.FlightPlan{flight}, slices.Collect(handler.DB.GetAllFlights()))
 }
 
@@ -336,6 +361,7 @@ func newHandlerFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *flig
 		dss.New("https://dss.localutm", client),
 		peer.New(client),
 		db.NewInMemoryDB(),
+		scd.NewInMemoryIntentStore(),
 		"http://openuss.localutm",
 	)
 }

@@ -19,6 +19,7 @@ import (
 	"bwawan.com/openuss/internal/operations"
 	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/router"
+	"bwawan.com/openuss/internal/scd"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
 	"bwawan.com/openuss/internal/util"
@@ -92,14 +93,14 @@ func newServer(logger *slog.Logger) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	store := db.NewInMemoryDB()
-	planning, err := NewPlanningHandler(tokens, store)
+	intents := scd.NewInMemoryIntentStore()
+	planning, err := NewPlanningHandler(tokens, intents)
 	if err != nil {
 		return nil, err
 	}
 	return server.Listen(
 		ResolveAddress(),
-		NewHTTPHandler(store, planning, logger),
+		NewHTTPHandler(intents, planning, logger),
 		logger)
 }
 
@@ -112,20 +113,20 @@ func NewTokenSource() (auth.TokenSource, error) {
 	return auth.NewDummyOAuth(endpoint, sub, nil)
 }
 
-func NewHTTPHandler(db db.DB, planning router.FlightPlanning, logger *slog.Logger) http.Handler {
-	routes := createRouter(db, planning)
+func NewHTTPHandler(intents scd.IntentStore, planning router.FlightPlanning, logger *slog.Logger) http.Handler {
+	routes := createRouter(intents, planning)
 	return httplog.Middleware(logger)(routes)
 }
 
-func createRouter(db db.DB, planning router.FlightPlanning) http.Handler {
+func createRouter(intents scd.IntentStore, planning router.FlightPlanning) http.Handler {
 	return router.New(
 		versioning.New(),
 		planning,
-		operations.New(db),
+		operations.New(intents),
 	)
 }
 
-func NewPlanningHandler(tokens auth.TokenSource, db db.DB) (*flightplanning.Handler, error) {
+func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flightplanning.Handler, error) {
 	ussBaseURL := os.Getenv("USS_BASE_URL")
 	if util.IsBlank(ussBaseURL) {
 		return nil, errors.New("USS_BASE_URL is required")
@@ -133,7 +134,8 @@ func NewPlanningHandler(tokens auth.TokenSource, db db.DB) (*flightplanning.Hand
 
 	client := utmclient.New(tokens, nil)
 	peer := peer.New(client)
-	return flightplanning.New(newUSSAuthority(client), peer, db, ussBaseURL), nil
+	db := db.NewInMemoryDB()
+	return flightplanning.New(newUSSAuthority(client), peer, db, intents, ussBaseURL), nil
 }
 
 func newUSSAuthority(client *utmclient.Client) dss.USSAuthority {

@@ -13,6 +13,7 @@ import (
 	"bwawan.com/openuss/internal/api/scdussv1"
 	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/dss"
+	"bwawan.com/openuss/internal/scd"
 )
 
 type PutFlightPlanBody struct {
@@ -98,7 +99,8 @@ func (h *Handler) findIDsForExistingFlightPlan(flight *db.FlightPlan) (scdussv1.
 	if flight == nil {
 		return scdussv1.EntityID(uuid.New().String()), nil
 	}
-	intent := h.DB.GetIntent(flight.EntityID)
+	// TODO: Missing context; no error handling
+	intent, _ := h.Intents.Get(nil, flight.EntityID)
 	return intent.EntityID, new(intent.OVN)
 }
 
@@ -124,10 +126,10 @@ func flightPlanState(plan FlightPlan) scdussv1.OperationalIntentState {
 func (h *Handler) saveOperationalIntent(
 	plan FlightPlan,
 	result scdussv1.ChangeOperationalIntentReferenceResponse,
-) db.OperationalIntent {
+) scd.OperationalIntent {
 	timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)
 	timeEnd, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeEnd.Value)
-	intent := db.OperationalIntent{
+	intent := scd.OperationalIntent{
 		EntityID:        result.OperationalIntentReference.Id,
 		Manager:         result.OperationalIntentReference.Manager,
 		USSAvailability: result.OperationalIntentReference.UssAvailability,
@@ -141,11 +143,12 @@ func (h *Handler) saveOperationalIntent(
 		SubscriptionID:  result.OperationalIntentReference.SubscriptionId,
 		Volumes:         plan.BasicInformation.Area,
 	}
-	h.DB.SaveIntent(intent)
+	// TODO: Missing context; no error handling
+	h.Intents.Upsert(nil, intent)
 	return intent
 }
 
-func (h *Handler) saveFlightPlan(id uuid.UUID, intent db.OperationalIntent) {
+func (h *Handler) saveFlightPlan(id uuid.UUID, intent scd.OperationalIntent) {
 	h.DB.SaveFlight(db.FlightPlan{
 		ID:       id,
 		EntityID: intent.EntityID,
@@ -170,8 +173,9 @@ func rejectionResponse() (int, map[string]any) {
 }
 
 func (h *Handler) hasAnyOtherIntent(entityID scdussv1.EntityID) bool {
-	intents := slices.Collect(h.DB.GetAllIntents())
-	return slices.IndexFunc(intents, func(intent db.OperationalIntent) bool {
+	// TODO: Missing context; no error handling
+	intents, _ := h.Intents.List(nil)
+	return slices.IndexFunc(intents, func(intent scd.OperationalIntent) bool {
 		return intent.EntityID != entityID
 	}) >= 0
 }
