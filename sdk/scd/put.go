@@ -51,19 +51,21 @@ func (s *Service) put(
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
-		if isLowerPriority(details) {
+		if peerBlocksUs(details) {
 			return OperationalIntent{}, ErrConflict
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
-		result, err = s.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
+		result, _ = s.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
 	}
 
 	return s.saveOperationalIntent(params, result), nil
 }
 
-func isLowerPriority(details scdussv1.GetOperationalIntentDetailsResponse) bool {
+const blockingPriority = 100
+
+func peerBlocksUs(details scdussv1.GetOperationalIntentDetailsResponse) bool {
 	return details.OperationalIntent.Details.Priority != nil &&
-		*details.OperationalIntent.Details.Priority == 100 &&
+		*details.OperationalIntent.Details.Priority == blockingPriority &&
 		details.OperationalIntent.Reference.State != scdussv1.OperationalIntentState_Activated
 }
 

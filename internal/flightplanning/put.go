@@ -35,7 +35,7 @@ func (h *Handler) putOrRejectFlight(
 	flightID uuid.UUID,
 	plan FlightPlan,
 ) map[string]string {
-	existingFlight := h.DB.GetFlight(flightID)
+	existingFlight := h.Flights.Get(flightID)
 
 	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
 	intent, err := h.putIntent(ctx, existingFlight, toIntentParams(plan))
@@ -46,7 +46,7 @@ func (h *Handler) putOrRejectFlight(
 		return rejectionResponse()
 	}
 
-	h.DB.SaveFlight(db.FlightPlan{
+	h.Flights.Upsert(db.FlightPlan{
 		ID:       flightID,
 		EntityID: intent.EntityID,
 	})

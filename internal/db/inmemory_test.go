@@ -10,52 +10,52 @@ import (
 )
 
 func TestGetFlightOnEmptyDB(t *testing.T) {
-	store := db.NewInMemoryDB()
-	require.Nil(t, store.GetFlight(uuid.New()))
+	store := db.NewInMemoryFlightStore()
+	require.Nil(t, store.Get(uuid.New()))
 }
 
 func TestDeleteFlightOnEmptyDB(t *testing.T) {
-	store := db.NewInMemoryDB()
+	store := db.NewInMemoryFlightStore()
 	require.NotPanics(t, func() {
-		store.DeleteFlight(uuid.New())
+		store.Delete(uuid.New())
 	})
 }
 
 func TestGetSavedFlight(t *testing.T) {
-	store := db.NewInMemoryDB()
+	store := db.NewInMemoryFlightStore()
 	flight := db.FlightPlan{
 		ID: uuid.New(),
 	}
-	require.NoError(t, store.SaveFlight(flight))
-	require.Equal(t, flight, *(store.GetFlight(flight.ID)))
+	require.NoError(t, store.Upsert(flight))
+	require.Equal(t, flight, *(store.Get(flight.ID)))
 }
 
 func TestDeleteSavedFlight(t *testing.T) {
-	store := db.NewInMemoryDB()
+	store := db.NewInMemoryFlightStore()
 	flight := db.FlightPlan{
 		ID: uuid.New(),
 	}
-	require.NoError(t, store.SaveFlight(flight))
-	require.Equal(t, flight, *store.GetFlight(flight.ID))
-	store.DeleteFlight(flight.ID)
-	require.Nil(t, store.GetFlight(flight.ID))
+	require.NoError(t, store.Upsert(flight))
+	require.Equal(t, flight, *store.Get(flight.ID))
+	store.Delete(flight.ID)
+	require.Nil(t, store.Get(flight.ID))
 }
 
-func TestGetAllFlights(t *testing.T) {
-	store := db.NewInMemoryDB()
-	require.Empty(t, store.GetAllFlights())
+func TestListFlights(t *testing.T) {
+	store := db.NewInMemoryFlightStore()
+	require.Empty(t, store.List())
 
 	flight1 := db.FlightPlan{
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
-	store.SaveFlight(flight1)
-	require.Equal(t, []db.FlightPlan{flight1}, store.GetAllFlights())
+	store.Upsert(flight1)
+	require.Equal(t, []db.FlightPlan{flight1}, store.List())
 
 	flight2 := db.FlightPlan{
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
-	store.SaveFlight(flight2)
-	require.ElementsMatch(t, []db.FlightPlan{flight1, flight2}, store.GetAllFlights())
+	store.Upsert(flight2)
+	require.ElementsMatch(t, []db.FlightPlan{flight1, flight2}, store.List())
 }

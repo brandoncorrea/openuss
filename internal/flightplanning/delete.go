@@ -13,7 +13,7 @@ func (h *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	flight := h.DB.GetFlight(flightID)
+	flight := h.Flights.Get(flightID)
 	if flight == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -22,7 +22,7 @@ func (h *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	h.DB.DeleteFlight(flight.ID)
+	h.Flights.Delete(flight.ID)
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"flight_plan_status": "Closed",
 		"planning_result":    "Completed",

@@ -6,11 +6,11 @@ import (
 	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
-type DB interface {
-	SaveFlight(FlightPlan) error
-	GetFlight(uuid.UUID) *FlightPlan
-	DeleteFlight(uuid.UUID)
-	GetAllFlights() []FlightPlan
+type FlightStore interface {
+	Upsert(FlightPlan) error
+	Get(uuid.UUID) *FlightPlan
+	Delete(uuid.UUID)
+	List() []FlightPlan
 }
 
 type FlightPlan struct {

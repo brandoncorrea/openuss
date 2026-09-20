@@ -19,13 +19,13 @@ type StrategicCoordination interface {
 }
 
 type Handler struct {
-	SCD StrategicCoordination
-	DB  db.DB
+	SCD     StrategicCoordination
+	Flights db.FlightStore
 }
 
-func New(service StrategicCoordination, db db.DB) *Handler {
+func New(service StrategicCoordination, flights db.FlightStore) *Handler {
 	return &Handler{
-		SCD: service,
-		DB:  db,
+		SCD:     service,
+		Flights: flights,
 	}
 }

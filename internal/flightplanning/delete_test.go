@@ -29,7 +29,7 @@ func newSavedFlight(handler *flightplanning.Handler) db.FlightPlan {
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
-	handler.DB.SaveFlight(flight)
+	handler.Flights.Upsert(flight)
 	return flight
 }
 
@@ -41,7 +41,7 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 			return nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryDB())
+	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
 	flight := newSavedFlight(handler)
 
 	recorder := httptest.NewRecorder()
@@ -52,11 +52,11 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 		"planning_result":    "Completed",
 	})
 	require.Equal(t, flight.EntityID, deleted)
-	require.Nil(t, handler.DB.GetFlight(flight.ID))
+	require.Nil(t, handler.Flights.Get(flight.ID))
 }
 
 func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
-	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryDB())
+	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryFlightStore())
 
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(nil))
@@ -65,7 +65,7 @@ func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
 }
 
 func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
-	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryDB())
+	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryFlightStore())
 
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(uuid.New().String())))
@@ -79,12 +79,12 @@ func TestDeleteFlightPlanFailsWhenCoordinationFails(t *testing.T) {
 			return errors.New("dss unavailable")
 		},
 	}
-	handler := flightplanning.New(unavailable, db.NewInMemoryDB())
+	handler := flightplanning.New(unavailable, db.NewInMemoryFlightStore())
 	flight := newSavedFlight(handler)
 
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(flight.ID.String())))
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
-	require.Equal(t, flight, *handler.DB.GetFlight(flight.ID))
+	require.Equal(t, flight, *handler.Flights.Get(flight.ID))
 }

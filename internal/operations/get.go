@@ -24,7 +24,11 @@ func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	api.WriteJSON(w, http.StatusOK, scdussv1.GetOperationalIntentDetailsResponse{
+	api.WriteJSON(w, http.StatusOK, toWire(intent))
+}
+
+func toWire(intent scd.OperationalIntent) scdussv1.GetOperationalIntentDetailsResponse {
+	return scdussv1.GetOperationalIntentDetailsResponse{
 		OperationalIntent: scdussv1.OperationalIntent{
 			Reference: scdussv1.OperationalIntentReference{
 				Id:              intent.EntityID,
@@ -49,5 +53,5 @@ func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
 				Priority: &intent.Priority,
 			},
 		},
-	})
+	}
 }

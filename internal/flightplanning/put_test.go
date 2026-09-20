@@ -69,7 +69,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 			return intent, nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryDB())
+	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
 
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
@@ -85,7 +85,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	}, received)
 	require.Equal(t,
 		[]db.FlightPlan{{ID: flightID, EntityID: intent.EntityID}},
-		handler.DB.GetAllFlights())
+		handler.Flights.List())
 }
 
 func TestUpdateFlightPlanSucceeds(t *testing.T) {
@@ -103,8 +103,8 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 			return scd.OperationalIntent{EntityID: id}, nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryDB())
-	handler.DB.SaveFlight(existing)
+	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
+	handler.Flights.Upsert(existing)
 
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
@@ -115,7 +115,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	})
 	require.Equal(t, existing.EntityID, receivedID)
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, received.Volumes)
-	require.Equal(t, []db.FlightPlan{existing}, handler.DB.GetAllFlights())
+	require.Equal(t, []db.FlightPlan{existing}, handler.Flights.List())
 }
 
 func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
@@ -128,7 +128,7 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 			return scd.OperationalIntent{EntityID: scdtest.NewEntityID()}, nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryDB())
+	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
 
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
@@ -141,7 +141,7 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 }
 
 func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrRejected), db.NewInMemoryDB())
+	handler := flightplanning.New(rejectWith(scd.ErrRejected), db.NewInMemoryFlightStore())
 
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
@@ -152,11 +152,11 @@ func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
 	})
-	require.Empty(t, handler.DB.GetAllFlights())
+	require.Empty(t, handler.Flights.List())
 }
 
 func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryDB())
+	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryFlightStore())
 
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
@@ -167,18 +167,18 @@ func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
 	})
-	require.Empty(t, handler.DB.GetAllFlights())
+	require.Empty(t, handler.Flights.List())
 }
 
 func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryDB())
+	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryFlightStore())
 
 	flightID, flightParams := newFlightParams()
 	flight := db.FlightPlan{
 		ID:       flightID,
 		EntityID: scdtest.NewEntityID(),
 	}
-	handler.DB.SaveFlight(flight)
+	handler.Flights.Upsert(flight)
 
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flightParams))
@@ -188,5 +188,5 @@ func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "Planned",
 	})
-	require.ElementsMatch(t, []db.FlightPlan{flight}, handler.DB.GetAllFlights())
+	require.ElementsMatch(t, []db.FlightPlan{flight}, handler.Flights.List())
 }

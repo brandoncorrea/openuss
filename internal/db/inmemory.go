@@ -6,32 +6,32 @@ import (
 	"uuid"
 )
 
-type InMemoryDB struct {
+type InMemoryFlightStore struct {
 	Flights map[uuid.UUID]FlightPlan
 }
 
-func NewInMemoryDB() *InMemoryDB {
-	return &InMemoryDB{
+func NewInMemoryFlightStore() *InMemoryFlightStore {
+	return &InMemoryFlightStore{
 		Flights: map[uuid.UUID]FlightPlan{},
 	}
 }
 
-func (s *InMemoryDB) SaveFlight(flight FlightPlan) error {
+func (s *InMemoryFlightStore) Upsert(flight FlightPlan) error {
 	s.Flights[flight.ID] = flight
 	return nil
 }
 
-func (s *InMemoryDB) GetFlight(id uuid.UUID) *FlightPlan {
+func (s *InMemoryFlightStore) Get(id uuid.UUID) *FlightPlan {
 	if e, ok := s.Flights[id]; ok {
 		return &e
 	}
 	return nil
 }
 
-func (s *InMemoryDB) DeleteFlight(id uuid.UUID) {
+func (s *InMemoryFlightStore) Delete(id uuid.UUID) {
 	delete(s.Flights, id)
 }
 
-func (s *InMemoryDB) GetAllFlights() []FlightPlan {
+func (s *InMemoryFlightStore) List() []FlightPlan {
 	return slices.Collect(maps.Values(s.Flights))
 }
