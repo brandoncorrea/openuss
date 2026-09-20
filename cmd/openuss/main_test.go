@@ -18,6 +18,7 @@ import (
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/httpclient"
 	"bwawan.com/openuss/internal/logging/logtest"
+	"bwawan.com/openuss/internal/peer"
 	"bwawan.com/openuss/internal/scd"
 )
 
@@ -131,13 +132,14 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	intents := scd.NewInMemoryIntentStore()
 	handler, err := main.NewPlanningHandler(dummy, intents)
 	require.NoError(t, err)
-	dssClient := handler.DSS.(*dss.DSS)
+	dssClient := handler.SCD.DSS.(*dss.DSS)
 	require.Equal(t, "http://dss.example.com:8080/blah", dssClient.Host)
 	require.Equal(t, dummy, dssClient.Client.TokenSource)
 	require.Equal(t, httpclient.DefaultTimeout, dssClient.Client.HTTP.HTTP.Timeout)
+	peerClient := handler.SCD.Peer.(*peer.UTMClient)
+	require.Same(t, dssClient.Client, peerClient.Client)
 	require.IsType(t, &db.InMemoryDB{}, handler.DB)
-	require.Same(t, intents, handler.Intents)
-	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
+	require.Same(t, intents, handler.SCD.Intents)
 	require.EqualValues(t, "the-uss-base-url", handler.SCD.USSBaseURL)
 }
 
@@ -148,14 +150,11 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	intents := scd.NewInMemoryIntentStore()
 	handler, err := main.NewPlanningHandler(dummy, intents)
 	require.NoError(t, err)
-	require.IsType(t, &scd.Service{}, handler.SCD)
-	require.IsType(t, &dss.InMemoryDSS{}, handler.DSS)
+	require.IsType(t, &dss.InMemoryDSS{}, handler.SCD.DSS)
+	require.IsType(t, &peer.UTMClient{}, handler.SCD.Peer)
 	require.IsType(t, &db.InMemoryDB{}, handler.DB)
-	require.Same(t, intents, handler.Intents)
-	require.Same(t, handler.Peer, handler.SCD.Peer)
-	require.Same(t, handler.DSS, handler.SCD.DSS)
-	require.Same(t, handler.Intents, handler.SCD.Intents)
-	require.EqualValues(t, "the-uss-base-url", handler.USSBaseURL)
+	require.Same(t, intents, handler.SCD.Intents)
+	require.EqualValues(t, "the-uss-base-url", handler.SCD.USSBaseURL)
 }
 
 func TestNewDummyTokenSource(t *testing.T) {

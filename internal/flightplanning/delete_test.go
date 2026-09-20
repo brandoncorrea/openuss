@@ -28,7 +28,7 @@ func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan 
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: scdtest.NewVolumes4D(),
 	}
-	result, _ := handler.DSS.PutOperationalIntentReference(t.Context(), id, nil, params)
+	result, _ := handler.SCD.DSS.PutOperationalIntentReference(t.Context(), id, nil, params)
 	reference := result.OperationalIntentReference
 	intent := scd.OperationalIntent{
 		EntityID: reference.Id,
@@ -38,7 +38,7 @@ func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan 
 		ID:       uuid.New(),
 		EntityID: intent.EntityID,
 	}
-	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
+	require.NoError(t, handler.SCD.Intents.Upsert(t.Context(), intent))
 	handler.DB.SaveFlight(flight)
 	return flight
 }
@@ -54,7 +54,7 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Nil(t, handler.DB.GetFlight(flight.ID))
 
-	_, err := handler.Intents.Get(t.Context(), flight.EntityID)
+	_, err := handler.SCD.Intents.Get(t.Context(), flight.EntityID)
 	require.ErrorIs(t, err, scd.ErrNotFound)
 
 	require.NotContains(t, dssClient.Intents, flight.EntityID)
@@ -85,13 +85,12 @@ func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
 func TestDeleteFlightPlanFails(t *testing.T) {
 	handler, dssClient := newHandler()
 	flight := newFlightPlan(t, handler)
-	intent, err := handler.Intents.Get(t.Context(), flight.EntityID)
+	intent, err := handler.SCD.Intents.Get(t.Context(), flight.EntityID)
 	require.NoError(t, err)
 
 	intent.OVN = scdussv1.EntityOVN(uuid.New().String())
 
-	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
-
+	require.NoError(t, handler.SCD.Intents.Upsert(t.Context(), intent))
 	recorder := httptest.NewRecorder()
 	request := newDeleteRequest(new(flight.ID.String()))
 	handler.DeleteFlightPlan(recorder, request)
@@ -99,7 +98,7 @@ func TestDeleteFlightPlanFails(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, flight, *handler.DB.GetFlight(flight.ID))
 
-	stored, err := handler.Intents.Get(t.Context(), flight.EntityID)
+	stored, err := handler.SCD.Intents.Get(t.Context(), flight.EntityID)
 	require.NoError(t, err)
 	require.Equal(t, intent, stored)
 	require.Contains(t, dssClient.Intents, flight.EntityID)

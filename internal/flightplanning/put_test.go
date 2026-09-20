@@ -57,16 +57,8 @@ func putFlightPlanRequest(id *uuid.UUID, body flightplanning.PutFlightPlanBody) 
 
 func newHandler() (*flightplanning.Handler, *dss.InMemoryDSS) {
 	dssClient := dss.NewInMemoryDSS()
-	intents := scd.NewInMemoryIntentStore()
-	handler := flightplanning.New(
-		dssClient,
-		scd.New(dssClient, nil, intents, "http://openuss.localutm"),
-		nil,
-		db.NewInMemoryDB(),
-		intents,
-		"http://openuss.localutm",
-	)
-	return handler, dssClient
+	service := scd.New(dssClient, nil, scd.NewInMemoryIntentStore(), "http://openuss.localutm")
+	return flightplanning.New(service, db.NewInMemoryDB()), dssClient
 }
 
 func TestCreateFlightPlanSucceeds(t *testing.T) {
@@ -82,7 +74,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 	})
 
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
-	intent, err := handler.Intents.Get(t.Context(), handler.DB.GetFlight(flightID).EntityID)
+	intent, err := handler.SCD.Intents.Get(t.Context(), handler.DB.GetFlight(flightID).EntityID)
 	require.NoError(t, err)
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, intent.Volumes)
 	require.EqualValues(t, 2, intent.Priority)
@@ -114,7 +106,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	require.Len(t, slices.Collect(handler.DB.GetAllFlights()), 1)
 	require.Equal(t, flight1, handler.DB.GetFlight(flightID))
 
-	intents, err := handler.Intents.List(t.Context())
+	intents, err := handler.SCD.Intents.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, intents, 1)
 	require.Equal(t, flight1.EntityID, intents[0].EntityID)
@@ -198,7 +190,7 @@ func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
 		ID:       flightID,
 		EntityID: intent.EntityID,
 	}
-	require.NoError(t, handler.Intents.Upsert(t.Context(), intent))
+	require.NoError(t, handler.SCD.Intents.Upsert(t.Context(), intent))
 	handler.DB.SaveFlight(flight)
 
 	response := httptest.NewRecorder()
@@ -218,15 +210,11 @@ func newHandlerFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *flig
 		auth.NewInMemoryTokenSource(),
 		httptest.NewTestServer(t, dsstest.NewPeerHandler(peers)).Client(),
 	)
-	dssClient := dss.New("https://dss.localutm", client)
-	intents := scd.NewInMemoryIntentStore()
-	peerClient := peer.New(client)
-	return flightplanning.New(
-		dssClient,
-		scd.New(dssClient, peerClient, intents, "http://openuss.localutm"),
-		peerClient,
-		db.NewInMemoryDB(),
-		intents,
+	service := scd.New(
+		dss.New("https://dss.localutm", client),
+		peer.New(client),
+		scd.NewInMemoryIntentStore(),
 		"http://openuss.localutm",
 	)
+	return flightplanning.New(service, db.NewInMemoryDB())
 }
