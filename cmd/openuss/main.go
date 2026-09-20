@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
-	"bwawan.com/openuss/internal/util"
 	"bwawan.com/openuss/internal/versioning"
 	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/dss"
@@ -128,7 +128,7 @@ func createRouter(intents scd.IntentStore, planning router.FlightPlanning) http.
 
 func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flightplanning.Handler, error) {
 	ussBaseURL := os.Getenv("USS_BASE_URL")
-	if util.IsBlank(ussBaseURL) {
+	if strings.TrimSpace(ussBaseURL) == "" {
 		return nil, errors.New("USS_BASE_URL is required")
 	}
 
