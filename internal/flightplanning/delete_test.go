@@ -8,7 +8,6 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/wiretest"
 	"bwawan.com/openuss/sdk/api/scdussv1"
@@ -24,8 +23,8 @@ func newDeleteRequest(flightPlanID *string) *http.Request {
 	return request
 }
 
-func newSavedFlight(handler *flightplanning.Handler) db.FlightPlan {
-	flight := db.FlightPlan{
+func newSavedFlight(handler *flightplanning.Handler) flightplanning.FlightPlanRecord {
+	flight := flightplanning.FlightPlanRecord{
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
@@ -41,7 +40,7 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 			return nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 	flight := newSavedFlight(handler)
 
 	recorder := httptest.NewRecorder()
@@ -56,7 +55,7 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 }
 
 func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
-	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(scdtest.Stub{}, flightplanning.NewInMemoryFlightStore())
 
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(nil))
@@ -65,7 +64,7 @@ func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
 }
 
 func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
-	handler := flightplanning.New(scdtest.Stub{}, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(scdtest.Stub{}, flightplanning.NewInMemoryFlightStore())
 
 	recorder := httptest.NewRecorder()
 	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(uuid.New().String())))
@@ -79,7 +78,7 @@ func TestDeleteFlightPlanFailsWhenCoordinationFails(t *testing.T) {
 			return errors.New("dss unavailable")
 		},
 	}
-	handler := flightplanning.New(unavailable, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(unavailable, flightplanning.NewInMemoryFlightStore())
 	flight := newSavedFlight(handler)
 
 	recorder := httptest.NewRecorder()

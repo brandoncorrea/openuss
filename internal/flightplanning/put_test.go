@@ -9,7 +9,6 @@ import (
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/wiretest"
 	"bwawan.com/openuss/sdk/api/scdussv1"
@@ -69,7 +68,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 			return intent, nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
@@ -84,13 +83,13 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 		Priority: 2,
 	}, received)
 	require.Equal(t,
-		[]db.FlightPlan{{ID: flightID, EntityID: intent.EntityID}},
+		[]flightplanning.FlightPlanRecord{{ID: flightID, EntityID: intent.EntityID}},
 		handler.Flights.List())
 }
 
 func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	flightID, flight := newFlightParams()
-	existing := db.FlightPlan{ID: flightID, EntityID: scdtest.NewEntityID()}
+	existing := flightplanning.FlightPlanRecord{ID: flightID, EntityID: scdtest.NewEntityID()}
 	var receivedID scdussv1.EntityID
 	var received scd.IntentParams
 	coordination := scdtest.Stub{
@@ -103,7 +102,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 			return scd.OperationalIntent{EntityID: id}, nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 	handler.Flights.Upsert(existing)
 
 	response := httptest.NewRecorder()
@@ -115,7 +114,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	})
 	require.Equal(t, existing.EntityID, receivedID)
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, received.Volumes)
-	require.Equal(t, []db.FlightPlan{existing}, handler.Flights.List())
+	require.Equal(t, []flightplanning.FlightPlanRecord{existing}, handler.Flights.List())
 }
 
 func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
@@ -128,7 +127,7 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 			return scd.OperationalIntent{EntityID: scdtest.NewEntityID()}, nil
 		},
 	}
-	handler := flightplanning.New(coordination, db.NewInMemoryFlightStore())
+	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
 	response := httptest.NewRecorder()
 	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
@@ -141,7 +140,7 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 }
 
 func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrRejected), db.NewInMemoryFlightStore())
+	handler := flightplanning.New(rejectWith(scd.ErrRejected), flightplanning.NewInMemoryFlightStore())
 
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
@@ -156,7 +155,7 @@ func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 }
 
 func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryFlightStore())
+	handler := flightplanning.New(rejectWith(scd.ErrConflict), flightplanning.NewInMemoryFlightStore())
 
 	flightID, flight := newFlightParams()
 	response := httptest.NewRecorder()
@@ -171,10 +170,10 @@ func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 }
 
 func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrConflict), db.NewInMemoryFlightStore())
+	handler := flightplanning.New(rejectWith(scd.ErrConflict), flightplanning.NewInMemoryFlightStore())
 
 	flightID, flightParams := newFlightParams()
-	flight := db.FlightPlan{
+	flight := flightplanning.FlightPlanRecord{
 		ID:       flightID,
 		EntityID: scdtest.NewEntityID(),
 	}
@@ -188,5 +187,5 @@ func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
 		"planning_result":    "Rejected",
 		"flight_plan_status": "Planned",
 	})
-	require.ElementsMatch(t, []db.FlightPlan{flight}, handler.Flights.List())
+	require.ElementsMatch(t, []flightplanning.FlightPlanRecord{flight}, handler.Flights.List())
 }

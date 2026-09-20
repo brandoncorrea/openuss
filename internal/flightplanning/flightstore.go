@@ -1,4 +1,4 @@
-package db
+package flightplanning
 
 import (
 	"uuid"
@@ -7,13 +7,13 @@ import (
 )
 
 type FlightStore interface {
-	Upsert(FlightPlan) error
-	Get(uuid.UUID) *FlightPlan
+	Upsert(FlightPlanRecord) error
+	Get(uuid.UUID) *FlightPlanRecord
 	Delete(uuid.UUID)
-	List() []FlightPlan
+	List() []FlightPlanRecord
 }
 
-type FlightPlan struct {
+type FlightPlanRecord struct {
 	ID       uuid.UUID
 	EntityID scdussv1.EntityID
 }

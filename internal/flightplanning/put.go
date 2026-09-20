@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"uuid"
 
-	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/scd"
@@ -46,7 +45,7 @@ func (h *Handler) putOrRejectFlight(
 		return rejectionResponse()
 	}
 
-	h.Flights.Upsert(db.FlightPlan{
+	h.Flights.Upsert(FlightPlanRecord{
 		ID:       flightID,
 		EntityID: intent.EntityID,
 	})
@@ -56,7 +55,7 @@ func (h *Handler) putOrRejectFlight(
 
 func (h *Handler) putIntent(
 	ctx context.Context,
-	existingFlight *db.FlightPlan,
+	existingFlight *FlightPlanRecord,
 	params scd.IntentParams,
 ) (scd.OperationalIntent, error) {
 	if existingFlight == nil {
@@ -77,7 +76,7 @@ func toIntentParams(plan FlightPlan) scd.IntentParams {
 	}
 }
 
-func successResponse(existingFlight *db.FlightPlan) map[string]string {
+func successResponse(existingFlight *FlightPlanRecord) map[string]string {
 	// TODO(gap): There's probably some input parameter this should be based off of
 	status := "OkToFly"
 	if existingFlight == nil {
@@ -99,7 +98,7 @@ func rejectionResponse() map[string]string {
 	}
 }
 
-func conflictResponse(existingFlight *db.FlightPlan) map[string]string {
+func conflictResponse(existingFlight *FlightPlanRecord) map[string]string {
 	// TODO(gap): This check is probably wrong
 	status := "Planned"
 	if existingFlight == nil {

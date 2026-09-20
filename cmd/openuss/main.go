@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/httplog"
 	"bwawan.com/openuss/internal/logging"
@@ -135,7 +134,7 @@ func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flig
 	client := utmclient.New(tokens, nil)
 	dssClient := newDSSClient(client)
 	peer := peer.New(client)
-	flights := db.NewInMemoryFlightStore()
+	flights := flightplanning.NewInMemoryFlightStore()
 	service := scd.New(dssClient, peer, intents, ussBaseURL)
 	return flightplanning.New(service, flights), nil
 }

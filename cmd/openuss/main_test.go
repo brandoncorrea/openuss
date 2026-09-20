@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	main "bwawan.com/openuss/cmd/openuss"
-	"bwawan.com/openuss/internal/db"
 	"bwawan.com/openuss/internal/flightplanning"
 	"bwawan.com/openuss/internal/logging/logtest"
 	"bwawan.com/openuss/sdk/auth"
@@ -139,7 +138,7 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	require.Equal(t, httpclient.DefaultTimeout, dssClient.Client.HTTP.HTTP.Timeout)
 	peerClient := service.Peer.(*peer.UTMClient)
 	require.Same(t, dssClient.Client, peerClient.Client)
-	require.IsType(t, &db.InMemoryFlightStore{}, handler.Flights)
+	require.IsType(t, &flightplanning.InMemoryFlightStore{}, handler.Flights)
 	require.Same(t, intents, service.Intents)
 	require.EqualValues(t, "the-uss-base-url", service.USSBaseURL)
 }
@@ -154,7 +153,7 @@ func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
 	service := handler.SCD.(*scd.Service)
 	require.IsType(t, &dss.InMemoryDSS{}, service.DSS)
 	require.IsType(t, &peer.UTMClient{}, service.Peer)
-	require.IsType(t, &db.InMemoryFlightStore{}, handler.Flights)
+	require.IsType(t, &flightplanning.InMemoryFlightStore{}, handler.Flights)
 	require.Same(t, intents, service.Intents)
 	require.EqualValues(t, "the-uss-base-url", service.USSBaseURL)
 }
