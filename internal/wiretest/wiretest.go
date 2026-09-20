@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,22 +21,4 @@ func RequireJSON(t *testing.T, recorder *httptest.ResponseRecorder, expected map
 	var body map[string]any
 	require.NoError(t, json.UnmarshalRead(recorder.Body, &body))
 	require.Equal(t, expected, body)
-}
-
-type BadTransport struct {
-	Error error
-}
-
-func (t *BadTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, t.Error
-}
-
-func NewErrorClient(err error) *http.Client {
-	return &http.Client{Transport: &BadTransport{Error: err}}
-}
-
-func AssertNotCalledHandler(t *testing.T) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		assert.Fail(t, "expected handler not to be called")
-	}
 }
