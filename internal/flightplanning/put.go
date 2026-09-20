@@ -38,19 +38,43 @@ func (h *Handler) putOrRejectFlight(
 	flightID uuid.UUID,
 	plan FlightPlan,
 ) (int, any) {
-	params := toIntentParams(plan)
-
-	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
-	if isInvalidIntent(params) {
-		return rejectionResponse()
-	}
-
 	existingFlight := h.DB.GetFlight(flightID)
 	entityID, ovn := h.findIDsForExistingFlightPlan(existingFlight)
 
+	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
+	intent, err := h.putIntent(ctx, entityID, ovn, toIntentParams(plan))
+	if errors.Is(err, scd.ErrConflict) {
+		return conflictResponse(ovn)
+	}
+	if errors.Is(err, scd.ErrRejected) {
+		return rejectionResponse()
+	}
+
+	h.DB.SaveFlight(db.FlightPlan{
+		ID:       flightID,
+		EntityID: intent.EntityID,
+	})
+
+	return http.StatusOK, map[string]any{
+		"planning_result":    "Completed",
+		"flight_plan_status": flightPlanStatus(ovn),
+		// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
+	}
+}
+
+func (h *Handler) putIntent(
+	ctx context.Context,
+	entityID scdussv1.EntityID,
+	ovn *scdussv1.EntityOVN,
+	params scd.IntentParams,
+) (scd.OperationalIntent, error) {
+	if isInvalidIntent(params) {
+		return scd.OperationalIntent{}, scd.ErrRejected
+	}
+
 	// TODO(gap): This assumes everything overlaps
 	if h.hasAnyOtherIntent(entityID) {
-		return rejectionResponse()
+		return scd.OperationalIntent{}, scd.ErrRejected
 	}
 
 	putParams := h.createPutRequestParams(params)
@@ -61,30 +85,13 @@ func (h *Handler) putOrRejectFlight(
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := h.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
 		if isLowerPriority(details) {
-			// TODO(gap): This check is probably wrong
-			status := "NotPlanned"
-			if ovn != nil {
-				status = "Planned"
-			}
-			return http.StatusOK, map[string]any{
-				"activity_result":    "Rejected",
-				"planning_result":    "Rejected",
-				"flight_plan_status": status,
-				// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
-			}
+			return scd.OperationalIntent{}, scd.ErrConflict
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
 		result, err = h.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
 	}
 
-	intent := h.saveOperationalIntent(params, result)
-	h.saveFlightPlan(flightID, intent)
-
-	return http.StatusOK, map[string]any{
-		"planning_result":    "Completed",
-		"flight_plan_status": flightPlanStatus(ovn),
-		// TODO(gap): Missing Fields: activity_result, as_planned, flight_id, includes_advisories, queries(?), log_messages(?)
-	}
+	return h.saveOperationalIntent(params, result), nil
 }
 
 func isLowerPriority(details scdussv1.GetOperationalIntentDetailsResponse) bool {
@@ -160,13 +167,6 @@ func (h *Handler) saveOperationalIntent(
 	return intent
 }
 
-func (h *Handler) saveFlightPlan(id uuid.UUID, intent scd.OperationalIntent) {
-	h.DB.SaveFlight(db.FlightPlan{
-		ID:       id,
-		EntityID: intent.EntityID,
-	})
-}
-
 func flightPlanStatus(ovn *scdussv1.EntityOVN) string {
 	// TODO(gap): There's probably some input parameter this should be based off of
 	if ovn == nil {
@@ -180,6 +180,20 @@ func rejectionResponse() (int, map[string]any) {
 		"activity_result":    "Rejected",
 		"planning_result":    "Rejected",
 		"flight_plan_status": "NotPlanned",
+		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
+	}
+}
+
+func conflictResponse(ovn *scdussv1.EntityOVN) (int, map[string]any) {
+	// TODO(gap): This check is probably wrong
+	status := "NotPlanned"
+	if ovn != nil {
+		status = "Planned"
+	}
+	return http.StatusOK, map[string]any{
+		"activity_result":    "Rejected",
+		"planning_result":    "Rejected",
+		"flight_plan_status": status,
 		// TODO(gap): Missing Fields: flight_id, includes_advisories, notes, queries(?), log_messages(?)
 	}
 }
