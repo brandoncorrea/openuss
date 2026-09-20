@@ -1,12 +1,10 @@
 package flightplanning
 
 import (
-	"errors"
 	"net/http"
 	"uuid"
 
 	"bwawan.com/openuss/internal/api"
-	"bwawan.com/openuss/internal/scd"
 )
 
 func (h *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
@@ -20,18 +18,9 @@ func (h *Handler) DeleteFlightPlan(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	// TODO: Missing context
-	intent, err := h.Intents.Get(nil, flight.EntityID)
-
-	// TODO: What if there is a different kind of error?
-	if !errors.Is(err, scd.ErrNotFound) {
-		_, err := h.DSS.DeleteOperationalIntent(r.Context(), intent.EntityID, intent.OVN)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// TODO: Missing context; no error handling
-		h.Intents.Delete(nil, intent.EntityID)
+	if err := h.SCD.DeleteOperationalIntent(r.Context(), flight.EntityID); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	h.DB.DeleteFlight(flight.ID)
 	api.WriteJSON(w, http.StatusOK, map[string]any{

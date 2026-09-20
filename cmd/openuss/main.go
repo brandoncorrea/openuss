@@ -133,12 +133,19 @@ func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flig
 	}
 
 	client := utmclient.New(tokens, nil)
+	dssClient := newDSSClient(client)
 	peer := peer.New(client)
 	db := db.NewInMemoryDB()
-	return flightplanning.New(newUSSAuthority(client), peer, db, intents, ussBaseURL), nil
+	return flightplanning.New(
+		dssClient,
+		scd.New(dssClient, intents),
+		peer,
+		db,
+		intents,
+		ussBaseURL), nil
 }
 
-func newUSSAuthority(client *utmclient.Client) dss.USSAuthority {
+func newDSSClient(client *utmclient.Client) dss.Client {
 	if os.Getenv("DSS_IMPL") == "memory" {
 		return dss.NewInMemoryDSS()
 	}

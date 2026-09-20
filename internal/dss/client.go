@@ -6,7 +6,7 @@ import (
 	"bwawan.com/openuss/internal/api/scdussv1"
 )
 
-type USSAuthority interface {
+type Client interface {
 	PutOperationalIntentReference(
 		context.Context,
 		scdussv1.EntityID,
@@ -14,7 +14,7 @@ type USSAuthority interface {
 		scdussv1.PutOperationalIntentReferenceParameters,
 	) (scdussv1.ChangeOperationalIntentReferenceResponse, error)
 
-	DeleteOperationalIntent(
+	DeleteOperationalIntentReference(
 		context.Context,
 		scdussv1.EntityID,
 		scdussv1.EntityOVN,

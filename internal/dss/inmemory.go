@@ -85,7 +85,7 @@ func (d *InMemoryDSS) createImplicitSubscription(
 	return subscription.Id
 }
 
-func (d *InMemoryDSS) DeleteOperationalIntent(
+func (d *InMemoryDSS) DeleteOperationalIntentReference(
 	ctx context.Context,
 	id scdussv1.EntityID,
 	ovn scdussv1.EntityOVN,

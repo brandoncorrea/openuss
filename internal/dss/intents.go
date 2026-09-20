@@ -56,7 +56,7 @@ func (d *DSS) PutOperationalIntentReference(
 	return scdussv1.ChangeOperationalIntentReferenceResponse{}, NewAirspaceConflictError(conflict)
 }
 
-func (d *DSS) DeleteOperationalIntent(
+func (d *DSS) DeleteOperationalIntentReference(
 	ctx context.Context,
 	entityID scdussv1.EntityID,
 	ovn scdussv1.EntityOVN,

@@ -9,22 +9,25 @@ import (
 )
 
 type Handler struct {
-	DSS        dss.USSAuthority
+	DSS        dss.Client
 	Peer       peer.Client
 	DB         db.DB
 	Intents    scd.IntentStore
 	USSBaseURL scdussv1.OperationalIntentUssBaseURL
+	SCD        *scd.Service
 }
 
 func New(
-	dss dss.USSAuthority,
+	dssClient dss.Client,
+	service *scd.Service,
 	peer peer.Client,
 	db db.DB,
 	intents scd.IntentStore,
 	baseURL string,
 ) *Handler {
 	return &Handler{
-		DSS:        dss,
+		DSS:        dssClient,
+		SCD:        service,
 		Peer:       peer,
 		DB:         db,
 		Intents:    intents,

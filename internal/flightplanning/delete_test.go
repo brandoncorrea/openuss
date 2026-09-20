@@ -44,7 +44,7 @@ func newFlightPlan(t *testing.T, handler *flightplanning.Handler) db.FlightPlan 
 }
 
 func TestDeleteFlightPlanSucceeds(t *testing.T) {
-	handler, authority := newHandler()
+	handler, dssClient := newHandler()
 	flight := newFlightPlan(t, handler)
 
 	recorder := httptest.NewRecorder()
@@ -57,7 +57,7 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	_, err := handler.Intents.Get(t.Context(), flight.EntityID)
 	require.ErrorIs(t, err, scd.ErrNotFound)
 
-	require.NotContains(t, authority.Intents, flight.EntityID)
+	require.NotContains(t, dssClient.Intents, flight.EntityID)
 	wiretest.RequireJSON(t, recorder, map[string]any{
 		"flight_plan_status": "Closed",
 		"planning_result":    "Completed",
@@ -83,7 +83,7 @@ func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
 }
 
 func TestDeleteFlightPlanFails(t *testing.T) {
-	handler, authority := newHandler()
+	handler, dssClient := newHandler()
 	flight := newFlightPlan(t, handler)
 	intent, err := handler.Intents.Get(t.Context(), flight.EntityID)
 	require.NoError(t, err)
@@ -102,5 +102,5 @@ func TestDeleteFlightPlanFails(t *testing.T) {
 	stored, err := handler.Intents.Get(t.Context(), flight.EntityID)
 	require.NoError(t, err)
 	require.Equal(t, intent, stored)
-	require.Contains(t, authority.Intents, flight.EntityID)
+	require.Contains(t, dssClient.Intents, flight.EntityID)
 }
