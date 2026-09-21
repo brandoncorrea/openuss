@@ -41,7 +41,7 @@ func ussHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		index := slices.IndexFunc(peers, func(intent scdussv1.OperationalIntent) bool {
 			host := strings.TrimPrefix(string(intent.Reference.UssBaseUrl), "http://")
-			return host == r.Host && string(intent.Reference.Id) == uriEntityID(r.RequestURI)
+			return host == r.Host && string(intent.Reference.Id) == ussEntityID(r.RequestURI)
 		})
 
 		if index >= 0 {
@@ -82,7 +82,7 @@ func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 		} else {
 			api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{
 				OperationalIntentReference: scdussv1.OperationalIntentReference{
-					Id:         scdussv1.EntityID(uriEntityID(r.RequestURI)),
+					Id:         scdussv1.EntityID(dssEntityID(r.RequestURI)),
 					Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
 					UssBaseUrl: putParams.UssBaseUrl,
 				},
@@ -91,7 +91,15 @@ func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	}
 }
 
-func uriEntityID(uri string) string {
-	parts := strings.Split(uri, "/")
-	return parts[len(parts)-1]
+const ussIntentsPath = "/uss/v1/operational_intents/"
+
+func ussEntityID(uri string) string {
+	return strings.TrimPrefix(uri, ussIntentsPath)
+}
+
+const dssIntentReferencesPath = "/dss/v1/operational_intent_references/"
+
+func dssEntityID(uri string) string {
+	entityID, _, _ := strings.Cut(strings.TrimPrefix(uri, dssIntentReferencesPath), "/")
+	return entityID
 }
