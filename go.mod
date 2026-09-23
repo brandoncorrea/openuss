@@ -5,6 +5,7 @@ go 1.27.1
 require (
 	github.com/go-logr/logr v1.4.4
 	github.com/joho/godotenv v1.5.1
+	github.com/peterstace/simplefeatures v0.59.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.45.0
