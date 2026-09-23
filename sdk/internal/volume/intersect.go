@@ -22,7 +22,7 @@ func volume4DIntersects(ours, theirs scdussv1.Volume4D) bool {
 }
 
 func altitudesIntersect(ours, theirs scdussv1.Volume4D) bool {
-	return (*ours.Volume.AltitudeLower).Value < (*theirs.Volume.AltitudeUpper).Value
+	return ours.Volume.AltitudeLower.Value < theirs.Volume.AltitudeUpper.Value
 }
 
 // TODO(gap): A circular outline is unhandled
@@ -30,10 +30,9 @@ func Geometry(volume scdussv1.Volume3D) geom.Geometry {
 	// TODO(gap): Nothing validates a polygon whose edges cross or whose vertices repeat
 	vertices := volume.OutlinePolygon.Vertices
 	ring := slices.Concat(vertices, vertices[:1])
-	coordinates := make([]float64, len(ring)*geom.DimXY.Dimension())
-	for i, vertex := range ring {
-		coordinates[i*2] = float64(vertex.Lng)
-		coordinates[(i*2)+1] = float64(vertex.Lat)
+	coordinates := make([]float64, 0, len(ring)*geom.DimXY.Dimension())
+	for _, vertex := range ring {
+		coordinates = append(coordinates, float64(vertex.Lng), float64(vertex.Lat))
 	}
 	exterior := geom.NewLineString(geom.NewSequence(coordinates, geom.DimXY))
 	return geom.NewPolygon([]geom.LineString{exterior}).AsGeometry()

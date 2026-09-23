@@ -62,10 +62,10 @@ func toIntentParams(plan FlightPlan) scd.IntentParams {
 	}
 }
 
-func planningResponse(result PlanningActivityResult, existing scd.OperationalIntent) FlightPlanResponse {
+func planningResponse(result PlanningActivityResult, intent scd.OperationalIntent) FlightPlanResponse {
 	return FlightPlanResponse{
 		PlanningResult:   result,
-		FlightPlanStatus: intentToFlightState(existing),
+		FlightPlanStatus: intentToFlightState(intent),
 	}
 }
 
