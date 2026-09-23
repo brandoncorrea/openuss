@@ -57,7 +57,8 @@ func (s *Service) put(
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
-		if peerBlocksUs(details.OperationalIntent.Details, intent, params) {
+		peerIntent := detailResponseToIntent(details)
+		if peerBlocksUs(peerIntent, intent, params) {
 			return OperationalIntent{}, ErrConflict
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
@@ -70,18 +71,18 @@ func (s *Service) put(
 const blockingPriority = 100
 
 func peerBlocksUs(
-	peer scdussv1.OperationalIntentDetails,
+	peer OperationalIntent,
 	intent OperationalIntent,
 	params IntentParams,
 ) bool {
-	if !volume.VolumesIntersect(params.Volumes, *peer.Volumes) {
+	if !volume.VolumesIntersect(params.Volumes, peer.Volumes) {
 		return false
 	}
-	if *peer.Priority != blockingPriority {
+	if peer.Priority != blockingPriority {
 		return false
 	}
 	if intent.State == scdussv1.OperationalIntentState_Activated {
-		return !volume.VolumesIntersect(intent.Volumes, *peer.Volumes)
+		return !volume.VolumesIntersect(intent.Volumes, peer.Volumes)
 	}
 	return true
 }
@@ -135,6 +136,14 @@ func (s *Service) hasAnyOtherIntent(entityID scdussv1.EntityID) bool {
 	return slices.IndexFunc(intents, func(intent OperationalIntent) bool {
 		return intent.EntityID != entityID
 	}) >= 0
+}
+
+func detailResponseToIntent(details scdussv1.GetOperationalIntentDetailsResponse) OperationalIntent {
+	return OperationalIntent{
+		Priority: *details.OperationalIntent.Details.Priority,
+		Volumes:  *details.OperationalIntent.Details.Volumes,
+		OVN:      *details.OperationalIntent.Reference.Ovn,
+	}
 }
 
 const planningHorizon = 30 * 24 * time.Hour
