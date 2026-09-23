@@ -60,12 +60,15 @@ func rejectWith(err error) scdtest.Stub {
 
 func TestCreateFlightPlanSucceeds(t *testing.T) {
 	flightID, flight := newFlightParams()
-	intent := scd.OperationalIntent{EntityID: scdtest.NewEntityID()}
+	entityID := scdtest.NewEntityID()
 	var received scd.IntentParams
 	coordination := scdtest.Stub{
 		CreateFn: func(_ context.Context, params scd.IntentParams) (scd.OperationalIntent, error) {
 			received = params
-			return intent, nil
+			return scd.OperationalIntent{
+				EntityID: entityID,
+				State:    params.State,
+			}, nil
 		},
 	}
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
@@ -83,7 +86,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 		Priority: 2,
 	}, received)
 	require.Equal(t,
-		[]flightplanning.FlightPlanRecord{{ID: flightID, EntityID: intent.EntityID}},
+		[]flightplanning.FlightPlanRecord{{ID: flightID, EntityID: entityID}},
 		handler.Flights.List())
 }
 
@@ -99,7 +102,10 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 			params scd.IntentParams,
 		) (scd.OperationalIntent, error) {
 			receivedID, received = id, params
-			return scd.OperationalIntent{EntityID: id}, nil
+			return scd.OperationalIntent{
+				EntityID: id,
+				State:    params.State,
+			}, nil
 		},
 	}
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
@@ -110,7 +116,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
-		FlightPlanStatus: flightplanning.FlightPlanStatusOkToFly,
+		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
 	require.Equal(t, existing.EntityID, receivedID)
 	require.Equal(t, flight.FlightPlan.BasicInformation.Area, received.Volumes)
@@ -124,7 +130,10 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	coordination := scdtest.Stub{
 		CreateFn: func(_ context.Context, params scd.IntentParams) (scd.OperationalIntent, error) {
 			received = params
-			return scd.OperationalIntent{EntityID: scdtest.NewEntityID()}, nil
+			return scd.OperationalIntent{
+				EntityID: scdtest.NewEntityID(),
+				State:    params.State,
+			}, nil
 		},
 	}
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
@@ -134,7 +143,7 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
-		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
+		FlightPlanStatus: flightplanning.FlightPlanStatusOkToFly,
 	})
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, received.State)
 }
@@ -168,8 +177,15 @@ func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 }
 
 func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
-	handler := flightplanning.New(rejectWith(scd.ErrConflict), flightplanning.NewInMemoryFlightStore())
-
+	coordination := scdtest.Stub{
+		UpdateFn: func(context.Context, scdussv1.EntityID, scd.IntentParams) (scd.OperationalIntent, error) {
+			return scd.OperationalIntent{
+				EntityID: scdtest.NewEntityID(),
+				State:    scdussv1.OperationalIntentState_Accepted,
+			}, scd.ErrConflict
+		},
+	}
+	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 	flightID, flightParams := newFlightParams()
 	flight := flightplanning.FlightPlanRecord{
 		ID:       flightID,

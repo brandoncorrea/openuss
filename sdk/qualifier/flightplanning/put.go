@@ -3,7 +3,6 @@ package flightplanning
 import (
 	"context"
 	"encoding/json/v2"
-	"errors"
 	"net/http"
 	"uuid"
 
@@ -32,11 +31,8 @@ func (h *Handler) putOrRejectFlight(
 
 	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
 	intent, err := h.putIntent(ctx, existingFlight, toIntentParams(plan))
-	if errors.Is(err, scd.ErrConflict) {
-		return conflictResponse(existingFlight)
-	}
-	if errors.Is(err, scd.ErrRejected) {
-		return conflictResponse(nil)
+	if err != nil {
+		return planningResponse(PlanningActivityResultRejected, intent)
 	}
 
 	h.Flights.Upsert(FlightPlanRecord{
@@ -44,7 +40,7 @@ func (h *Handler) putOrRejectFlight(
 		EntityID: intent.EntityID,
 	})
 
-	return successResponse(existingFlight)
+	return planningResponse(PlanningActivityResultCompleted, intent)
 }
 
 func (h *Handler) putIntent(
@@ -59,37 +55,34 @@ func (h *Handler) putIntent(
 }
 
 func toIntentParams(plan FlightPlan) scd.IntentParams {
-	state := scdussv1.OperationalIntentState_Accepted
-	if plan.BasicInformation.UsageState == UsageStateInUse {
-		state = scdussv1.OperationalIntentState_Activated
-	}
 	return scd.IntentParams{
 		Volumes:  plan.BasicInformation.Area,
-		State:    state,
+		State:    flightToIntentState(plan),
 		Priority: scdussv1.Priority(plan.F3548.Priority),
 	}
 }
 
-func successResponse(existingFlight *FlightPlanRecord) FlightPlanResponse {
-	// TODO(gap): There's probably some input parameter this should be based off of
-	status := FlightPlanStatusOkToFly
-	if existingFlight == nil {
-		status = FlightPlanStatusPlanned
-	}
+func planningResponse(result PlanningActivityResult, existing scd.OperationalIntent) FlightPlanResponse {
 	return FlightPlanResponse{
-		PlanningResult:   PlanningActivityResultCompleted,
-		FlightPlanStatus: status,
+		PlanningResult:   result,
+		FlightPlanStatus: intentToFlightState(existing),
 	}
 }
 
-func conflictResponse(existingFlight *FlightPlanRecord) FlightPlanResponse {
-	// TODO(gap): This check is probably wrong
-	status := FlightPlanStatusPlanned
-	if existingFlight == nil {
-		status = FlightPlanStatusNotPlanned
+func flightToIntentState(plan FlightPlan) scdussv1.OperationalIntentState {
+	if plan.BasicInformation.UsageState == UsageStateInUse {
+		return scdussv1.OperationalIntentState_Activated
 	}
-	return FlightPlanResponse{
-		PlanningResult:   PlanningActivityResultRejected,
-		FlightPlanStatus: status,
+	return scdussv1.OperationalIntentState_Accepted
+}
+
+func intentToFlightState(intent scd.OperationalIntent) FlightPlanStatus {
+	switch intent.State {
+	case scdussv1.OperationalIntentState_Accepted:
+		return FlightPlanStatusPlanned
+	case scdussv1.OperationalIntentState_Activated:
+		return FlightPlanStatusOkToFly
+	default:
+		return FlightPlanStatusNotPlanned
 	}
 }
