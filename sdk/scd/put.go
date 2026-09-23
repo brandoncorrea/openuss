@@ -9,6 +9,7 @@ import (
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/internal/volume"
 )
 
 func (s *Service) CreateOperationalIntent(
@@ -27,7 +28,11 @@ func (s *Service) UpdateOperationalIntent(
 ) (OperationalIntent, error) {
 	// TODO: Missing context; no error handling
 	existing, _ := s.Intents.Get(nil, id)
-	return s.put(ctx, existing, new(existing.OVN), params)
+	updated, err := s.put(ctx, existing, new(existing.OVN), params)
+	if err != nil {
+		return existing, err
+	}
+	return updated, nil
 }
 
 func (s *Service) put(
@@ -52,7 +57,7 @@ func (s *Service) put(
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
-		if peerBlocksUs(details) {
+		if peerBlocksUs(details.OperationalIntent.Details, intent, params) {
 			return OperationalIntent{}, ErrConflict
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
@@ -64,10 +69,21 @@ func (s *Service) put(
 
 const blockingPriority = 100
 
-func peerBlocksUs(details scdussv1.GetOperationalIntentDetailsResponse) bool {
-	return details.OperationalIntent.Details.Priority != nil &&
-		*details.OperationalIntent.Details.Priority == blockingPriority &&
-		details.OperationalIntent.Reference.State != scdussv1.OperationalIntentState_Activated
+func peerBlocksUs(
+	peer scdussv1.OperationalIntentDetails,
+	intent OperationalIntent,
+	params IntentParams,
+) bool {
+	if !volume.VolumesIntersect(params.Volumes, *peer.Volumes) {
+		return false
+	}
+	if *peer.Priority != blockingPriority {
+		return false
+	}
+	if intent.State == scdussv1.OperationalIntentState_Activated {
+		return !volume.VolumesIntersect(intent.Volumes, *peer.Volumes)
+	}
+	return true
 }
 
 func isInvalidIntent(params IntentParams) bool {

@@ -19,12 +19,50 @@ import (
 
 const ussBaseURL = "http://openuss.localutm"
 
+const blockingPriority = 100
+
+const squareSideDegrees = 0.001
+
+func sharedCorner() scdussv1.LatLngPoint {
+	return scdussv1.LatLngPoint{Lng: -80.6, Lat: 37.2}
+}
+
+func distantCorner() scdussv1.LatLngPoint {
+	return scdussv1.LatLngPoint{Lng: -80.5, Lat: 37.2}
+}
+
+func newSquareVolumes(corner scdussv1.LatLngPoint) []scdussv1.Volume4D {
+	volumes := scdtest.NewVolumes4D()
+	volumes[0].Volume.OutlineCircle = nil
+	volumes[0].Volume.OutlinePolygon = &scdussv1.Polygon{
+		Vertices: []scdussv1.LatLngPoint{
+			corner,
+			{Lng: corner.Lng + squareSideDegrees, Lat: corner.Lat},
+			{Lng: corner.Lng + squareSideDegrees, Lat: corner.Lat + squareSideDegrees},
+			{Lng: corner.Lng, Lat: corner.Lat + squareSideDegrees},
+		},
+	}
+	return volumes
+}
+
 func newIntentParams() scd.IntentParams {
+	return newIntentParamsAt(sharedCorner())
+}
+
+func newIntentParamsAt(corner scdussv1.LatLngPoint) scd.IntentParams {
 	return scd.IntentParams{
-		Volumes:  scdtest.NewVolumes4D(),
+		Volumes:  newSquareVolumes(corner),
 		State:    scdussv1.OperationalIntentState_Accepted,
 		Priority: 2,
 	}
+}
+
+func newEndedIntentParams() scd.IntentParams {
+	params := newIntentParams()
+	oneSecondAgo := time.Now().Add(-time.Second)
+	params.Volumes[0].TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
+	params.Volumes[0].TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
+	return params
 }
 
 func newServiceFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *scd.Service {
@@ -48,12 +86,24 @@ func newPeerIntent() scdussv1.OperationalIntent {
 			Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
 			UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
 		},
+		Details: scdussv1.OperationalIntentDetails{
+			Volumes:  new(newSquareVolumes(sharedCorner())),
+			Priority: new(scdussv1.Priority(0)),
+		},
 	}
 }
 
-func newPriority100PeerIntent() scdussv1.OperationalIntent {
+func newPriority100PeerIntentAt(corner scdussv1.LatLngPoint) scdussv1.OperationalIntent {
 	intent := newPeerIntent()
-	intent.Details.Priority = new(scdussv1.Priority(100))
+	intent.Details.Volumes = new(newSquareVolumes(corner))
+	intent.Details.Priority = new(scdussv1.Priority(blockingPriority))
+	return intent
+}
+
+func newActivatedIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
+	intent := newIntent()
+	intent.State = scdussv1.OperationalIntentState_Activated
+	intent.Volumes = newSquareVolumes(corner)
 	return intent
 }
 
@@ -62,6 +112,13 @@ func requireNothingStored(t *testing.T, service *scd.Service) {
 	intents, err := service.Intents.List(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, intents)
+}
+
+func requireStoredIntents(t *testing.T, service *scd.Service, expected ...scd.OperationalIntent) {
+	t.Helper()
+	intents, err := service.Intents.List(t.Context())
+	require.NoError(t, err)
+	require.ElementsMatch(t, expected, intents)
 }
 
 func TestCreateOperationalIntentRegistersItWithTheDSS(t *testing.T) {
@@ -74,7 +131,6 @@ func TestCreateOperationalIntentRegistersItWithTheDSS(t *testing.T) {
 	require.Len(t, dssClient.OperationalIntents(), 1)
 	dssIntent := dssClient.OperationalIntents()[0]
 	require.Equal(t, params.Volumes, *dssIntent.Details.Volumes)
-	require.Equal(t, scdussv1.OperationalIntentState_Accepted, dssIntent.Reference.State)
 	require.EqualValues(t, ussBaseURL, dssIntent.Reference.UssBaseUrl)
 	subscription, found := dssClient.Subscription(dssIntent.Reference.SubscriptionId)
 	require.True(t, found)
@@ -139,10 +195,7 @@ func TestUpdateOperationalIntentKeepsItsEntityIDAndOVN(t *testing.T) {
 	dssIntent, found := dssClient.OperationalIntent(created.EntityID)
 	require.True(t, found)
 	require.Equal(t, params.Volumes, *dssIntent.Details.Volumes)
-
-	intents, err := service.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, []scd.OperationalIntent{updated}, intents)
+	requireStoredIntents(t, service, updated)
 }
 
 func TestCreateOperationalIntentRejectsStartBeyondPlanningHorizon(t *testing.T) {
@@ -161,14 +214,11 @@ func TestCreateOperationalIntentRejectsStartBeyondPlanningHorizon(t *testing.T) 
 
 func TestCreateOperationalIntentRejectsAnIntentThatHasEnded(t *testing.T) {
 	service, dssClient := newService()
-	params := newIntentParams()
-	oneSecondAgo := time.Now().Add(-time.Second)
-	params.Volumes[0].TimeStart.Value = oneSecondAgo.Add(-time.Second).Format(time.RFC3339)
-	params.Volumes[0].TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
 
-	_, err := service.CreateOperationalIntent(t.Context(), params)
+	intent, err := service.CreateOperationalIntent(t.Context(), newEndedIntentParams())
 
 	require.ErrorIs(t, err, scd.ErrRejected)
+	require.Zero(t, intent)
 	require.Empty(t, dssClient.OperationalIntents())
 	requireNothingStored(t, service)
 }
@@ -178,13 +228,27 @@ func TestCreateOperationalIntentRejectsWhenAnotherIntentExists(t *testing.T) {
 	other := newIntent()
 	require.NoError(t, service.Intents.Upsert(t.Context(), other))
 
-	_, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
 
 	require.ErrorIs(t, err, scd.ErrRejected)
+	require.Zero(t, intent)
 	require.Empty(t, dssClient.OperationalIntents())
-	intents, err := service.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, []scd.OperationalIntent{other}, intents)
+	requireStoredIntents(t, service, other)
+}
+
+func TestUpdateOperationalIntentRejectsWhenAnotherIntentExists(t *testing.T) {
+	service, dssClient := newService()
+	first := newIntent()
+	second := newIntent()
+	require.NoError(t, service.Intents.Upsert(t.Context(), first))
+	require.NoError(t, service.Intents.Upsert(t.Context(), second))
+
+	intent, err := service.UpdateOperationalIntent(t.Context(), second.EntityID, newIntentParams())
+
+	require.ErrorIs(t, err, scd.ErrRejected)
+	require.Equal(t, second, intent)
+	require.Empty(t, dssClient.OperationalIntents())
+	requireStoredIntents(t, service, first, second)
 }
 
 func TestCreateOperationalIntentRetriesWithPeerOVNsWhenKeyIsMissing(t *testing.T) {
@@ -193,45 +257,82 @@ func TestCreateOperationalIntentRetriesWithPeerOVNsWhenKeyIsMissing(t *testing.T
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
 
 	require.NoError(t, err)
-	intents, err := service.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, []scd.OperationalIntent{intent}, intents)
+	requireStoredIntents(t, service, intent)
 }
 
 func TestCreateOperationalIntentConflictsWithPeerAtPriority100(t *testing.T) {
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{newPriority100PeerIntent()})
+	peer := newPriority100PeerIntentAt(sharedCorner())
+	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 
-	_, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
 
 	require.ErrorIs(t, err, scd.ErrConflict)
+	require.Zero(t, intent)
 	requireNothingStored(t, service)
 }
 
-func TestCreateOperationalIntentSucceedsWhenPriority100PeerIsActivated(t *testing.T) {
-	activated := newPriority100PeerIntent()
-	activated.Reference.State = scdussv1.OperationalIntentState_Activated
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{activated})
+func TestCreateOperationalIntentSucceedsWhenPriority100PeerDoesNotIntersect(t *testing.T) {
+	peer := newPriority100PeerIntentAt(distantCorner())
+	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 
-	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
 
 	require.NoError(t, err)
-	stored, err := service.Intents.Get(t.Context(), intent.EntityID)
-	require.NoError(t, err)
-	require.Equal(t, intent, stored)
+	requireStoredIntents(t, service, intent)
 }
 
-func TestUpdateOperationalIntentConflictsWithPeerAtPriority100(t *testing.T) {
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{newPriority100PeerIntent()})
-	existing := scd.OperationalIntent{
-		EntityID: scdtest.NewEntityID(),
-		OVN:      scdussv1.EntityOVN(uuid.New().String()),
-	}
+func TestUpdateOperationalIntentRejectsAnIntentThatHasEnded(t *testing.T) {
+	service, dssClient := newService()
+	existing := newCoordinatedIntent(t, service)
+
+	intent, err := service.UpdateOperationalIntent(t.Context(), existing.EntityID, newEndedIntentParams())
+
+	require.ErrorIs(t, err, scd.ErrRejected)
+	require.Equal(t, existing, intent)
+	dssIntent, found := dssClient.OperationalIntent(existing.EntityID)
+	require.True(t, found)
+	require.Equal(t, existing.OVN, *dssIntent.Reference.Ovn)
+	requireStoredIntents(t, service, existing)
+}
+
+func TestUpdateActivatedIntentSucceedsWhenItAlreadyConflictsWithPriority100Peer(t *testing.T) {
+	peer := newPriority100PeerIntentAt(sharedCorner())
+	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	existing := newActivatedIntentAt(sharedCorner())
+	require.NoError(t, service.Intents.Upsert(t.Context(), existing))
+	params := newIntentParamsAt(sharedCorner())
+
+	intent, err := service.UpdateOperationalIntent(t.Context(), existing.EntityID, params)
+
+	require.NoError(t, err)
+	require.Equal(t, existing.EntityID, intent.EntityID)
+	require.Equal(t, params.Volumes, intent.Volumes)
+	requireStoredIntents(t, service, intent)
+}
+
+func TestUpdateAcceptedIntentConflictsWhenItAlreadyConflictsWithPriority100Peer(t *testing.T) {
+	peer := newPriority100PeerIntentAt(sharedCorner())
+	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	existing := newActivatedIntentAt(sharedCorner())
+	existing.State = scdussv1.OperationalIntentState_Accepted
 	require.NoError(t, service.Intents.Upsert(t.Context(), existing))
 
-	_, err := service.UpdateOperationalIntent(t.Context(), existing.EntityID, newIntentParams())
+	intent, err := service.UpdateOperationalIntent(t.Context(), existing.EntityID, newIntentParamsAt(sharedCorner()))
 
 	require.ErrorIs(t, err, scd.ErrConflict)
-	intents, err := service.Intents.List(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, []scd.OperationalIntent{existing}, intents)
+	require.Equal(t, existing, intent)
+	requireStoredIntents(t, service, existing)
+}
+
+func TestUpdateActivatedIntentConflictsWhenMovingIntoPriority100Peer(t *testing.T) {
+	peer := newPriority100PeerIntentAt(sharedCorner())
+	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	existing := newActivatedIntentAt(distantCorner())
+	require.NoError(t, service.Intents.Upsert(t.Context(), existing))
+
+	intent, err := service.UpdateOperationalIntent(t.Context(), existing.EntityID, newIntentParamsAt(sharedCorner()))
+
+	require.ErrorIs(t, err, scd.ErrConflict)
+	require.Equal(t, existing, intent)
+	requireStoredIntents(t, service, existing)
 }
