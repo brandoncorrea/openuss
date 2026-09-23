@@ -16,7 +16,8 @@ func (s *Service) CreateOperationalIntent(
 	params IntentParams,
 ) (OperationalIntent, error) {
 	id := scdussv1.EntityID(uuid.New().String())
-	return s.put(ctx, id, nil, params)
+	intent := OperationalIntent{EntityID: id}
+	return s.put(ctx, intent, nil, params)
 }
 
 func (s *Service) UpdateOperationalIntent(
@@ -26,12 +27,12 @@ func (s *Service) UpdateOperationalIntent(
 ) (OperationalIntent, error) {
 	// TODO: Missing context; no error handling
 	existing, _ := s.Intents.Get(nil, id)
-	return s.put(ctx, existing.EntityID, new(existing.OVN), params)
+	return s.put(ctx, existing, new(existing.OVN), params)
 }
 
 func (s *Service) put(
 	ctx context.Context,
-	entityID scdussv1.EntityID,
+	intent OperationalIntent,
 	ovn *scdussv1.EntityOVN,
 	params IntentParams,
 ) (OperationalIntent, error) {
@@ -40,14 +41,14 @@ func (s *Service) put(
 	}
 
 	// TODO(gap): This assumes everything overlaps
-	if s.hasAnyOtherIntent(entityID) {
+	if s.hasAnyOtherIntent(intent.EntityID) {
 		return OperationalIntent{}, ErrRejected
 	}
 
 	putParams := s.createPutRequestParams(params)
 
 	// TODO(gap): What happens if the DSS call results in a non-conflict error?
-	result, err := s.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
+	result, err := s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
@@ -55,7 +56,7 @@ func (s *Service) put(
 			return OperationalIntent{}, ErrConflict
 		}
 		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
-		result, _ = s.DSS.PutOperationalIntentReference(ctx, entityID, ovn, putParams)
+		result, _ = s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	}
 
 	return s.saveOperationalIntent(params, result), nil
