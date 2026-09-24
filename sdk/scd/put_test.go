@@ -14,7 +14,6 @@ import (
 	"bwawan.com/openuss/sdk/internal/wiretest"
 	"bwawan.com/openuss/sdk/peer"
 	"bwawan.com/openuss/sdk/scd"
-	"bwawan.com/openuss/sdk/scdtest"
 	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/require"
 )
@@ -39,11 +38,13 @@ func newEndedIntentParams() scd.IntentParams {
 	return params
 }
 
-func newServiceFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *scd.Service {
+const peerUSSBaseURL = "http://uss1.localutm"
+
+func newServiceFromPeers(t *testing.T, peers ...scd.OperationalIntent) *scd.Service {
 	t.Helper()
 	client := utmclient.New(
 		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, dsstest.NewPeerHandler(peers)).Client(),
+		httptest.NewTestServer(t, dsstest.NewPeerHandler(toDSSIntents(peers...))).Client(),
 	)
 	return scd.New(
 		dss.New("https://dss.localutm", client),
@@ -53,11 +54,11 @@ func newServiceFromPeers(t *testing.T, peers []scdussv1.OperationalIntent) *scd.
 	)
 }
 
-func newServiceWithoutPeerLookups(t *testing.T, dssIntents []scdussv1.OperationalIntent) *scd.Service {
+func newServiceWithoutPeerLookups(t *testing.T, dssIntents ...scd.OperationalIntent) *scd.Service {
 	t.Helper()
 	dssClient := utmclient.New(
 		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, dsstest.NewPeerHandler(dssIntents)).Client(),
+		httptest.NewTestServer(t, dsstest.NewPeerHandler(toDSSIntents(dssIntents...))).Client(),
 	)
 	peerClient := utmclient.New(
 		auth.NewInMemoryTokenSource(),
@@ -102,24 +103,18 @@ func upsertIntents(t *testing.T, service *scd.Service, intents ...scd.Operationa
 	}
 }
 
-func newPeerIntent() scdussv1.OperationalIntent {
-	return scdussv1.OperationalIntent{
-		Reference: scdussv1.OperationalIntentReference{
-			Id:         scdtest.NewEntityID(),
-			Ovn:        new(scdussv1.EntityOVN(uuid.New().String())),
-			UssBaseUrl: scdussv1.OperationalIntentUssBaseURL("http://uss1.localutm"),
-		},
-		Details: scdussv1.OperationalIntentDetails{
-			Volumes:  new(newSquareVolumes(sharedCorner())),
-			Priority: new(scdussv1.Priority(0)),
-		},
-	}
+func newPeerIntent() scd.OperationalIntent {
+	intent := newIntent()
+	intent.Priority = 0
+	intent.OVN = scdussv1.EntityOVN(uuid.New().String())
+	intent.USSBaseURL = peerUSSBaseURL
+	return intent
 }
 
-func newHighPriorityPeerIntentAt(corner scdussv1.LatLngPoint) scdussv1.OperationalIntent {
+func newHighPriorityPeerIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
 	intent := newPeerIntent()
-	intent.Details.Volumes = new(newSquareVolumes(corner))
-	intent.Details.Priority = new(scdussv1.Priority(100))
+	intent.Volumes = newSquareVolumes(corner)
+	intent.Priority = 100
 	return intent
 }
 
@@ -278,7 +273,7 @@ func TestUpdateOperationalIntentRejectsWhenAnotherIntentConflicts(t *testing.T) 
 }
 
 func TestCreateOperationalIntentRetriesWithPeerOVNsWhenKeyIsMissing(t *testing.T) {
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{newPeerIntent()})
+	service := newServiceFromPeers(t, newPeerIntent())
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
 
@@ -288,7 +283,7 @@ func TestCreateOperationalIntentRetriesWithPeerOVNsWhenKeyIsMissing(t *testing.T
 
 func TestCreateOperationalIntentConflictsWithHighPriorityPeer(t *testing.T) {
 	peer := newHighPriorityPeerIntentAt(sharedCorner())
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	service := newServiceFromPeers(t, peer)
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
 
@@ -313,7 +308,7 @@ func TestCreateOperationalIntentSucceedsOverOwnLowerPriorityIntent(t *testing.T)
 
 func TestCreateOperationalIntentSucceedsWhenHighPriorityPeerDoesNotIntersect(t *testing.T) {
 	peer := newHighPriorityPeerIntentAt(distantCorner())
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	service := newServiceFromPeers(t, peer)
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
 
@@ -337,7 +332,7 @@ func TestUpdateOperationalIntentRejectsAnIntentThatHasEnded(t *testing.T) {
 
 func TestUpdateActivatedIntentSucceedsWhenItAlreadyConflictsWithHighPriorityPeer(t *testing.T) {
 	peer := newHighPriorityPeerIntentAt(sharedCorner())
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	service := newServiceFromPeers(t, peer)
 	existing := newActivatedIntentAt(sharedCorner())
 	upsertIntents(t, service, existing)
 	params := newIntentParamsAt(sharedCorner())
@@ -352,7 +347,7 @@ func TestUpdateActivatedIntentSucceedsWhenItAlreadyConflictsWithHighPriorityPeer
 
 func TestUpdateAcceptedIntentConflictsWhenItAlreadyConflictsWithHighPriorityPeer(t *testing.T) {
 	peer := newHighPriorityPeerIntentAt(sharedCorner())
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	service := newServiceFromPeers(t, peer)
 	existing := newActivatedIntentAt(sharedCorner())
 	existing.State = scdussv1.OperationalIntentState_Accepted
 	upsertIntents(t, service, existing)
@@ -366,7 +361,7 @@ func TestUpdateAcceptedIntentConflictsWhenItAlreadyConflictsWithHighPriorityPeer
 
 func TestUpdateActivatedIntentConflictsWhenMovingIntoHighPriorityPeer(t *testing.T) {
 	peer := newHighPriorityPeerIntentAt(sharedCorner())
-	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
+	service := newServiceFromPeers(t, peer)
 	existing := newActivatedIntentAt(distantCorner())
 	upsertIntents(t, service, existing)
 
@@ -379,7 +374,7 @@ func TestUpdateActivatedIntentConflictsWhenMovingIntoHighPriorityPeer(t *testing
 
 func TestCreateOperationalIntentSucceedsWithoutPeerLookupWhenKeyCoversKnownIntents(t *testing.T) {
 	intents := []scd.OperationalIntent{newNonConflictingKnownIntent(), newNonConflictingKnownIntent()}
-	service := newServiceWithoutPeerLookups(t, toDSSIntents(intents...))
+	service := newServiceWithoutPeerLookups(t, intents...)
 	upsertIntents(t, service, intents...)
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
@@ -390,8 +385,7 @@ func TestCreateOperationalIntentSucceedsWithoutPeerLookupWhenKeyCoversKnownInten
 
 func TestCreateOperationalIntentRetriesWithKnownAndPeerOVNs(t *testing.T) {
 	known := newNonConflictingKnownIntent()
-	dssIntents := append(toDSSIntents(known), newPeerIntent())
-	service := newServiceFromPeers(t, dssIntents)
+	service := newServiceFromPeers(t, known, newPeerIntent())
 	upsertIntents(t, service, known)
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
