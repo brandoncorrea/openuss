@@ -61,8 +61,8 @@ func (s *Service) put(
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
-		peerIntent := detailResponseToIntent(details)
-		if peerBlocksUs(peerIntent, intent, params) {
+		peerIntent := intentFromDetails(details)
+		if isBlockingUs(peerIntent, intent, params) {
 			return OperationalIntent{}, ErrConflict
 		}
 		putParams.Key = new(append(*putParams.Key, peerIntent.OVN))
@@ -72,19 +72,19 @@ func (s *Service) put(
 	return s.saveOperationalIntent(params, result), nil
 }
 
-func peerBlocksUs(
-	peer OperationalIntent,
+func isBlockingUs(
+	other OperationalIntent,
 	intent OperationalIntent,
 	params IntentParams,
 ) bool {
-	if params.Priority > peer.Priority {
+	if params.Priority > other.Priority {
 		return false
 	}
-	if !volume.VolumesIntersect(params.Volumes, peer.Volumes) {
+	if !volume.VolumesIntersect(params.Volumes, other.Volumes) {
 		return false
 	}
 	if intent.State == scdussv1.OperationalIntentState_Activated {
-		return !volume.VolumesIntersect(intent.Volumes, peer.Volumes)
+		return !volume.VolumesIntersect(intent.Volumes, other.Volumes)
 	}
 	return true
 }
@@ -146,12 +146,13 @@ func hasKnownConflict(
 	params IntentParams,
 	knownIntents []OperationalIntent,
 ) bool {
-	return slices.IndexFunc(knownIntents, func(peer OperationalIntent) bool {
-		return peer.EntityID != intent.EntityID && peerBlocksUs(peer, intent, params)
+	return slices.IndexFunc(knownIntents, func(other OperationalIntent) bool {
+		return other.EntityID != intent.EntityID && isBlockingUs(other, intent, params)
 	}) >= 0
 }
 
-func detailResponseToIntent(details scdussv1.GetOperationalIntentDetailsResponse) OperationalIntent {
+// TODO(gap): Dereferences without nil checks
+func intentFromDetails(details scdussv1.GetOperationalIntentDetailsResponse) OperationalIntent {
 	return OperationalIntent{
 		Priority: *details.OperationalIntent.Details.Priority,
 		Volumes:  *details.OperationalIntent.Details.Volumes,

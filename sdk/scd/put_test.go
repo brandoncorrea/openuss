@@ -289,7 +289,7 @@ func TestCreateOperationalIntentRejectsWhenKnownIntentConflicts(t *testing.T) {
 	requireStoredIntents(t, service, other)
 }
 
-func TestUpdatePlannedIntentRejectsWhenAnotherIntentConflicts(t *testing.T) {
+func TestUpdateOperationalIntentRejectsWhenAnotherIntentConflicts(t *testing.T) {
 	service, dssClient := newService()
 	first := newIntent()
 	second := newIntent()
@@ -323,7 +323,7 @@ func TestCreateOperationalIntentConflictsWithHighPriorityPeer(t *testing.T) {
 	requireNothingStored(t, service)
 }
 
-func TestCreatesOperationalIntentOverSelfOwnedIntentWithHigherPriority(t *testing.T) {
+func TestCreateOperationalIntentSucceedsOverOwnLowerPriorityIntent(t *testing.T) {
 	service, _ := newService()
 
 	lower, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
