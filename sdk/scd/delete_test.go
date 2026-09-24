@@ -5,17 +5,10 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
-	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )
-
-func newService() (*scd.Service, *dss.InMemoryDSS) {
-	dssClient := dss.NewInMemoryDSS()
-	service := scd.New(dssClient, nil, scd.NewInMemoryIntentStore(), ussBaseURL)
-	return service, dssClient
-}
 
 func newCoordinatedIntent(t *testing.T, service *scd.Service) scd.OperationalIntent {
 	t.Helper()

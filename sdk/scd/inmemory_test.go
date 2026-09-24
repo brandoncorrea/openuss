@@ -8,14 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newIntent() scd.OperationalIntent {
-	return scd.OperationalIntent{
-		EntityID: scdtest.NewEntityID(),
-		Volumes:  newSquareVolumes(sharedCorner()),
-		Priority: 2,
-	}
-}
-
 func TestGetUnknownIntentIsNotFound(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 
