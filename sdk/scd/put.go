@@ -9,6 +9,7 @@ import (
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/internal/util"
 	"bwawan.com/openuss/sdk/internal/volume"
 )
 
@@ -45,12 +46,15 @@ func (s *Service) put(
 		return OperationalIntent{}, ErrRejected
 	}
 
-	// TODO(gap): This assumes everything overlaps
-	if s.hasKnownConflict(intent, params) {
+	// TODO: Missing context; no error handling
+	// TODO(gap): This includes our own intent on Update
+	knownIntents, _ := s.Intents.List(nil)
+
+	if hasKnownConflict(intent, params, knownIntents) {
 		return OperationalIntent{}, ErrRejected
 	}
 
-	putParams := s.createPutRequestParams(params)
+	putParams := s.createPutRequestParams(params, keyFromIntents(knownIntents))
 
 	// TODO(gap): What happens if the DSS call results in a non-conflict error?
 	result, err := s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
@@ -61,7 +65,7 @@ func (s *Service) put(
 		if peerBlocksUs(peerIntent, intent, params) {
 			return OperationalIntent{}, ErrConflict
 		}
-		putParams.Key = &scdussv1.Key{*details.OperationalIntent.Reference.Ovn}
+		putParams.Key = new(append(*putParams.Key, peerIntent.OVN))
 		result, _ = s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	}
 
@@ -91,16 +95,25 @@ func isInvalidIntent(params IntentParams) bool {
 
 func (s *Service) createPutRequestParams(
 	params IntentParams,
+	key scdussv1.Key,
 ) scdussv1.PutOperationalIntentReferenceParameters {
 	return scdussv1.PutOperationalIntentReferenceParameters{
 		Extents:    params.Volumes,
 		State:      params.State,
 		UssBaseUrl: s.USSBaseURL,
+		Key:        new(key),
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
 			// TODO(gap): This probably needs to be a proper URL
 			UssBaseUrl: scdussv1.SubscriptionUssBaseURL("x"),
 		},
 	}
+}
+
+// TODO(gap): This sends ALL OVNs, not just the relevant ones
+func keyFromIntents(intents []OperationalIntent) scdussv1.Key {
+	return util.Map(intents, func(intent OperationalIntent) scdussv1.EntityOVN {
+		return intent.OVN
+	})
 }
 
 func (s *Service) saveOperationalIntent(
@@ -128,10 +141,12 @@ func (s *Service) saveOperationalIntent(
 	return intent
 }
 
-func (s *Service) hasKnownConflict(intent OperationalIntent, params IntentParams) bool {
-	// TODO: Missing context; no error handling
-	intents, _ := s.Intents.List(nil)
-	return slices.IndexFunc(intents, func(peer OperationalIntent) bool {
+func hasKnownConflict(
+	intent OperationalIntent,
+	params IntentParams,
+	knownIntents []OperationalIntent,
+) bool {
+	return slices.IndexFunc(knownIntents, func(peer OperationalIntent) bool {
 		return peer.EntityID != intent.EntityID && peerBlocksUs(peer, intent, params)
 	}) >= 0
 }
