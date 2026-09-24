@@ -11,6 +11,8 @@ import (
 func newIntent() scd.OperationalIntent {
 	return scd.OperationalIntent{
 		EntityID: scdtest.NewEntityID(),
+		Volumes:  newSquareVolumes(sharedCorner()),
+		Priority: 2,
 	}
 }
 

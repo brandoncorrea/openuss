@@ -46,7 +46,7 @@ func (s *Service) put(
 	}
 
 	// TODO(gap): This assumes everything overlaps
-	if s.hasAnyOtherIntent(intent.EntityID) {
+	if s.hasKnownConflict(intent, params) {
 		return OperationalIntent{}, ErrRejected
 	}
 
@@ -68,17 +68,15 @@ func (s *Service) put(
 	return s.saveOperationalIntent(params, result), nil
 }
 
-const blockingPriority = 100
-
 func peerBlocksUs(
 	peer OperationalIntent,
 	intent OperationalIntent,
 	params IntentParams,
 ) bool {
-	if !volume.VolumesIntersect(params.Volumes, peer.Volumes) {
+	if params.Priority > peer.Priority {
 		return false
 	}
-	if peer.Priority != blockingPriority {
+	if !volume.VolumesIntersect(params.Volumes, peer.Volumes) {
 		return false
 	}
 	if intent.State == scdussv1.OperationalIntentState_Activated {
@@ -130,11 +128,11 @@ func (s *Service) saveOperationalIntent(
 	return intent
 }
 
-func (s *Service) hasAnyOtherIntent(entityID scdussv1.EntityID) bool {
+func (s *Service) hasKnownConflict(intent OperationalIntent, params IntentParams) bool {
 	// TODO: Missing context; no error handling
 	intents, _ := s.Intents.List(nil)
-	return slices.IndexFunc(intents, func(intent OperationalIntent) bool {
-		return intent.EntityID != entityID
+	return slices.IndexFunc(intents, func(peer OperationalIntent) bool {
+		return peer.EntityID != intent.EntityID && peerBlocksUs(peer, intent, params)
 	}) >= 0
 }
 

@@ -19,8 +19,6 @@ import (
 
 const ussBaseURL = "http://openuss.localutm"
 
-const blockingPriority = 100
-
 const squareSideDegrees = 0.001
 
 func sharedCorner() scdussv1.LatLngPoint {
@@ -93,10 +91,10 @@ func newPeerIntent() scdussv1.OperationalIntent {
 	}
 }
 
-func newPriority100PeerIntentAt(corner scdussv1.LatLngPoint) scdussv1.OperationalIntent {
+func newHighPriorityPeerIntentAt(corner scdussv1.LatLngPoint) scdussv1.OperationalIntent {
 	intent := newPeerIntent()
 	intent.Details.Volumes = new(newSquareVolumes(corner))
-	intent.Details.Priority = new(scdussv1.Priority(blockingPriority))
+	intent.Details.Priority = new(scdussv1.Priority(100))
 	return intent
 }
 
@@ -223,12 +221,16 @@ func TestCreateOperationalIntentRejectsAnIntentThatHasEnded(t *testing.T) {
 	requireNothingStored(t, service)
 }
 
-func TestCreateOperationalIntentRejectsWhenAnotherIntentExists(t *testing.T) {
+func TestCreateOperationalIntentRejectsWhenKnownIntentConflicts(t *testing.T) {
 	service, dssClient := newService()
 	other := newIntent()
 	require.NoError(t, service.Intents.Upsert(t.Context(), other))
 
-	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+	params := scd.IntentParams{
+		Priority: other.Priority,
+		Volumes:  other.Volumes,
+	}
+	intent, err := service.CreateOperationalIntent(t.Context(), params)
 
 	require.ErrorIs(t, err, scd.ErrRejected)
 	require.Zero(t, intent)
@@ -236,7 +238,7 @@ func TestCreateOperationalIntentRejectsWhenAnotherIntentExists(t *testing.T) {
 	requireStoredIntents(t, service, other)
 }
 
-func TestUpdateOperationalIntentRejectsWhenAnotherIntentExists(t *testing.T) {
+func TestUpdatePlannedIntentRejectsWhenAnotherIntentConflicts(t *testing.T) {
 	service, dssClient := newService()
 	first := newIntent()
 	second := newIntent()
@@ -260,8 +262,8 @@ func TestCreateOperationalIntentRetriesWithPeerOVNsWhenKeyIsMissing(t *testing.T
 	requireStoredIntents(t, service, intent)
 }
 
-func TestCreateOperationalIntentConflictsWithPeerAtPriority100(t *testing.T) {
-	peer := newPriority100PeerIntentAt(sharedCorner())
+func TestCreateOperationalIntentConflictsWithHighPriorityPeer(t *testing.T) {
+	peer := newHighPriorityPeerIntentAt(sharedCorner())
 	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
@@ -271,8 +273,22 @@ func TestCreateOperationalIntentConflictsWithPeerAtPriority100(t *testing.T) {
 	requireNothingStored(t, service)
 }
 
-func TestCreateOperationalIntentSucceedsWhenPriority100PeerDoesNotIntersect(t *testing.T) {
-	peer := newPriority100PeerIntentAt(distantCorner())
+func TestCreatesOperationalIntentOverSelfOwnedIntentWithHigherPriority(t *testing.T) {
+	service, _ := newService()
+
+	lower, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+	require.NoError(t, err)
+
+	params := newIntentParams()
+	params.Priority = lower.Priority + 1
+	higher, err := service.CreateOperationalIntent(t.Context(), params)
+
+	require.NoError(t, err)
+	requireStoredIntents(t, service, lower, higher)
+}
+
+func TestCreateOperationalIntentSucceedsWhenHighPriorityPeerDoesNotIntersect(t *testing.T) {
+	peer := newHighPriorityPeerIntentAt(distantCorner())
 	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
@@ -295,8 +311,8 @@ func TestUpdateOperationalIntentRejectsAnIntentThatHasEnded(t *testing.T) {
 	requireStoredIntents(t, service, existing)
 }
 
-func TestUpdateActivatedIntentSucceedsWhenItAlreadyConflictsWithPriority100Peer(t *testing.T) {
-	peer := newPriority100PeerIntentAt(sharedCorner())
+func TestUpdateActivatedIntentSucceedsWhenItAlreadyConflictsWithHighPriorityPeer(t *testing.T) {
+	peer := newHighPriorityPeerIntentAt(sharedCorner())
 	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 	existing := newActivatedIntentAt(sharedCorner())
 	require.NoError(t, service.Intents.Upsert(t.Context(), existing))
@@ -310,8 +326,8 @@ func TestUpdateActivatedIntentSucceedsWhenItAlreadyConflictsWithPriority100Peer(
 	requireStoredIntents(t, service, intent)
 }
 
-func TestUpdateAcceptedIntentConflictsWhenItAlreadyConflictsWithPriority100Peer(t *testing.T) {
-	peer := newPriority100PeerIntentAt(sharedCorner())
+func TestUpdateAcceptedIntentConflictsWhenItAlreadyConflictsWithHighPriorityPeer(t *testing.T) {
+	peer := newHighPriorityPeerIntentAt(sharedCorner())
 	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 	existing := newActivatedIntentAt(sharedCorner())
 	existing.State = scdussv1.OperationalIntentState_Accepted
@@ -324,8 +340,8 @@ func TestUpdateAcceptedIntentConflictsWhenItAlreadyConflictsWithPriority100Peer(
 	requireStoredIntents(t, service, existing)
 }
 
-func TestUpdateActivatedIntentConflictsWhenMovingIntoPriority100Peer(t *testing.T) {
-	peer := newPriority100PeerIntentAt(sharedCorner())
+func TestUpdateActivatedIntentConflictsWhenMovingIntoHighPriorityPeer(t *testing.T) {
+	peer := newHighPriorityPeerIntentAt(sharedCorner())
 	service := newServiceFromPeers(t, []scdussv1.OperationalIntent{peer})
 	existing := newActivatedIntentAt(distantCorner())
 	require.NoError(t, service.Intents.Upsert(t.Context(), existing))
