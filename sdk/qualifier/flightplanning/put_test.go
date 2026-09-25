@@ -60,17 +60,7 @@ func rejectWith(err error) scdtest.Stub {
 
 func TestCreateFlightPlanSucceeds(t *testing.T) {
 	flightID, flight := newFlightParams()
-	entityID := scdtest.NewEntityID()
-	var received scd.IntentParams
-	coordination := scdtest.Stub{
-		CreateFn: func(_ context.Context, params scd.IntentParams) (scd.OperationalIntent, error) {
-			received = params
-			return scd.OperationalIntent{
-				EntityID: entityID,
-				State:    params.State,
-			}, nil
-		},
-	}
+	coordination, created := scdtest.NewCreateStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
 	response := httptest.NewRecorder()
@@ -84,9 +74,9 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 		Volumes:  flight.FlightPlan.BasicInformation.Area,
 		State:    scdussv1.OperationalIntentState_Accepted,
 		Priority: 2,
-	}, received)
+	}, created.Params)
 	require.Equal(t,
-		[]flightplanning.FlightPlanRecord{{ID: flightID, EntityID: entityID}},
+		[]flightplanning.FlightPlanRecord{{ID: flightID, EntityID: created.EntityID}},
 		handler.Flights.List())
 }
 
@@ -126,16 +116,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	flightID, flight := newFlightParams()
 	flight.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
-	var received scd.IntentParams
-	coordination := scdtest.Stub{
-		CreateFn: func(_ context.Context, params scd.IntentParams) (scd.OperationalIntent, error) {
-			received = params
-			return scd.OperationalIntent{
-				EntityID: scdtest.NewEntityID(),
-				State:    params.State,
-			}, nil
-		},
-	}
+	coordination, created := scdtest.NewCreateStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
 	response := httptest.NewRecorder()
@@ -145,7 +126,24 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 		FlightPlanStatus: flightplanning.FlightPlanStatusOkToFly,
 	})
-	require.Equal(t, scdussv1.OperationalIntentState_Activated, received.State)
+	require.Equal(t, scdussv1.OperationalIntentState_Activated, created.Params.State)
+}
+
+func TestUASStateOffNominalSubmitsNonconformingIntent(t *testing.T) {
+	flightID, flight := newFlightParams()
+	flight.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
+	flight.FlightPlan.BasicInformation.UASState = flightplanning.UASStateOffNominal
+	coordination, created := scdtest.NewCreateStub()
+	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
+
+	response := httptest.NewRecorder()
+	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
+		FlightPlanStatus: flightplanning.FlightPlanStatusOffNominal,
+	})
+	require.Equal(t, scdussv1.OperationalIntentState_Nonconforming, created.Params.State)
 }
 
 func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {

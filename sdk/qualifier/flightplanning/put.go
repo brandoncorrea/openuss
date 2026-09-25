@@ -69,7 +69,12 @@ func planningResponse(result PlanningActivityResult, intent scd.OperationalInten
 	}
 }
 
+// TODO(gap): A Closed UsageState is submitted as a live intent instead of ending it
 func flightToIntentState(plan FlightPlan) scdussv1.OperationalIntentState {
+	// TODO(gap): An intent is reported Nonconforming even when it isn't Activated
+	if plan.BasicInformation.UASState == UASStateOffNominal {
+		return scdussv1.OperationalIntentState_Nonconforming
+	}
 	if plan.BasicInformation.UsageState == UsageStateInUse {
 		return scdussv1.OperationalIntentState_Activated
 	}
@@ -82,6 +87,8 @@ func intentToFlightState(intent scd.OperationalIntent) FlightPlanStatus {
 		return FlightPlanStatusPlanned
 	case scdussv1.OperationalIntentState_Activated:
 		return FlightPlanStatusOkToFly
+	case scdussv1.OperationalIntentState_Nonconforming:
+		return FlightPlanStatusOffNominal
 	default:
 		return FlightPlanStatusNotPlanned
 	}

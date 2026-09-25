@@ -13,6 +13,11 @@ type Stub struct {
 	DeleteFn func(context.Context, scdussv1.EntityID) error
 }
 
+type CreateCall struct {
+	EntityID scdussv1.EntityID
+	Params   scd.IntentParams
+}
+
 func (s Stub) CreateOperationalIntent(
 	ctx context.Context,
 	params scd.IntentParams,
@@ -30,4 +35,17 @@ func (s Stub) UpdateOperationalIntent(
 
 func (s Stub) DeleteOperationalIntent(ctx context.Context, id scdussv1.EntityID) error {
 	return s.DeleteFn(ctx, id)
+}
+
+func NewCreateStub() (Stub, *CreateCall) {
+	created := &CreateCall{}
+	stub := Stub{
+		CreateFn: func(_ context.Context, params scd.IntentParams) (scd.OperationalIntent, error) {
+			entityID := NewEntityID()
+			*created = CreateCall{EntityID: entityID, Params: params}
+			intent := scd.OperationalIntent{EntityID: entityID, State: params.State}
+			return intent, nil
+		},
+	}
+	return stub, created
 }
