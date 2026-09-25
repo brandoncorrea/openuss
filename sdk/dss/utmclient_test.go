@@ -29,7 +29,8 @@ func TestCreateIntentRequestParameters(t *testing.T) {
 	entityID := scdtest.NewEntityID()
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPut, r.Method)
-		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
+		scopes := string(scdussv1.UtmStrategicCoordinationScope) + "," + string(scdussv1.UtmConformanceMonitoringSaScope)
+		token := "Bearer audience=dss.example.com&scopes=" + scopes
 		assert.Equal(t, token, r.Header.Get("Authorization"))
 		assert.Equal(t, "/dss/v1/operational_intent_references/"+string(entityID), r.RequestURI)
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})

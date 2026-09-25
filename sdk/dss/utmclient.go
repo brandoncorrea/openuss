@@ -44,7 +44,7 @@ func (u *UTMClient) PutOperationalIntentReference(
 	reference scdussv1.PutOperationalIntentReferenceParameters,
 ) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
 	endpoint := u.toOperationalIntentEndpoint(entityID, ovn)
-	response, err := u.Client.Put(ctx, endpoint, reference, scdussv1.UtmStrategicCoordinationScope)
+	response, err := u.Client.Put(ctx, endpoint, reference, scdussv1.UtmStrategicCoordinationScope, scdussv1.UtmConformanceMonitoringSaScope)
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}
