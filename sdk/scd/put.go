@@ -56,9 +56,14 @@ func (s *Service) put(
 
 	putParams := s.createPutRequestParams(params, keyFromIntents(knownIntents))
 
+	if putParams.State == scdussv1.OperationalIntentState_Activated && ovn == nil {
+		return OperationalIntent{}, ErrConflict
+	}
+
 	// TODO(gap): What happens if the DSS call results in a non-conflict error?
 	result, err := s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
+		// TODO(gap): We only fetch the first missing intent - the rest are ignored
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
 		peerIntent := intentFromDetails(details)

@@ -155,16 +155,19 @@ func TestCreateOperationalIntentRegistersItWithTheDSS(t *testing.T) {
 	require.EqualValues(t, "x", subscription.UssBaseUrl)
 }
 
-func TestCreateOperationalIntentSendsTheRequestedState(t *testing.T) {
+func TestUpdateOperationalIntentSendsTheRequestedState(t *testing.T) {
 	service, dssClient := newService()
 	params := newIntentParams()
+	intent, err := service.CreateOperationalIntent(t.Context(), params)
+	require.NoError(t, err)
 	params.State = scdussv1.OperationalIntentState_Activated
 
-	_, err := service.CreateOperationalIntent(t.Context(), params)
+	updated, err := service.UpdateOperationalIntent(t.Context(), intent.EntityID, params)
 
 	require.NoError(t, err)
 	dssIntent := dssClient.OperationalIntents()[0]
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, dssIntent.Reference.State)
+	require.Equal(t, scdussv1.OperationalIntentState_Activated, updated.State)
 }
 
 func TestCreateOperationalIntentStoresTheDSSReference(t *testing.T) {
@@ -392,4 +395,15 @@ func TestCreateOperationalIntentRetriesWithKnownAndPeerOVNs(t *testing.T) {
 
 	require.NoError(t, err)
 	requireStoredIntents(t, service, known, intent)
+}
+
+func TestCreateActivatedIntentConflicts(t *testing.T) {
+	service, _ := newService()
+	params := newIntentParams()
+	params.State = scdussv1.OperationalIntentState_Activated
+	intent, err := service.CreateOperationalIntent(t.Context(), params)
+
+	require.Zero(t, intent)
+	require.ErrorIs(t, err, scd.ErrConflict)
+	requireNothingStored(t, service)
 }
