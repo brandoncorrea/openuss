@@ -151,6 +151,7 @@ v1:
                 user_participant_ids:
                   # Participants using a DSS instance they do not provide should be listed as users of that DSS (so that they can take credit for USS requirements enforced by the DSS)
                   - mock_uss  # mock_uss uses this DSS instance; it does not provide its own instance
+                  - openuss  # openuss uses this DSS instance; it does not provide its own instance
                 base_url: http://dss1.uss1.localutm
                 supports_ovn_request: true
               - participant_id: uss2_dss
@@ -308,8 +309,9 @@ v1:
             - uss1_core
             - uss1_dss
           uss2:
-            - uss2_core
             - uss2_dss
+          openuss:
+            - openuss
         requirement_collections:
           scd_and_dss:
             requirements:
@@ -424,7 +426,7 @@ v1:
               - interuss.f3548.notification_requirements.NoDssEntityNoNotification
         participant_requirements:
           uss1: scd_and_dss
-          uss2: scd_no_dss
+          openuss: scd_no_dss
 
         # It is acceptable for the checks listed below to fail (in terms of determining the status of tested requirements in this artifact)
         acceptable_findings:
