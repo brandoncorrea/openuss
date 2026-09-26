@@ -160,6 +160,20 @@ func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 	require.Empty(t, handler.Flights.List())
 }
 
+func TestPutUnsupportedFlightPlanIsNotPlanned(t *testing.T) {
+	handler := flightplanning.New(rejectWith(scd.ErrNotSupported), flightplanning.NewInMemoryFlightStore())
+
+	flightID, flight := newFlightParams()
+	response := httptest.NewRecorder()
+	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+
+	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
+		PlanningResult:   flightplanning.PlanningActivityResultNotSupported,
+		FlightPlanStatus: flightplanning.FlightPlanStatusNotPlanned,
+	})
+	require.Empty(t, handler.Flights.List())
+}
+
 func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 	handler := flightplanning.New(rejectWith(scd.ErrConflict), flightplanning.NewInMemoryFlightStore())
 

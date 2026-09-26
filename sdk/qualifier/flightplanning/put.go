@@ -3,6 +3,7 @@ package flightplanning
 import (
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"net/http"
 	"uuid"
 
@@ -31,6 +32,9 @@ func (h *Handler) putOrRejectFlight(
 
 	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
 	intent, err := h.putIntent(ctx, existingFlight, toIntentParams(plan))
+	if errors.Is(err, scd.ErrNotSupported) {
+		return planningResponse(PlanningActivityResultNotSupported, intent)
+	}
 	if err != nil {
 		return planningResponse(PlanningActivityResultRejected, intent)
 	}

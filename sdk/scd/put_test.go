@@ -407,3 +407,14 @@ func TestCreateActivatedIntentConflicts(t *testing.T) {
 	require.ErrorIs(t, err, scd.ErrConflict)
 	requireNothingStored(t, service)
 }
+
+func TestCreateNonconformingIntentIsNotSupported(t *testing.T) {
+	service, _ := newService()
+	params := newIntentParams()
+	params.State = scdussv1.OperationalIntentState_Nonconforming
+	intent, err := service.CreateOperationalIntent(t.Context(), params)
+
+	require.Zero(t, intent)
+	require.ErrorIs(t, err, scd.ErrNotSupported)
+	requireNothingStored(t, service)
+}

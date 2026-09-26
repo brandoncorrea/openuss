@@ -20,3 +20,7 @@ func TestErrConflict(t *testing.T) {
 	require.EqualError(t, scd.ErrConflict, message)
 	require.ErrorIs(t, scd.ErrConflict, scd.ErrRejected)
 }
+
+func TestErrNotSupported(t *testing.T) {
+	require.EqualError(t, scd.ErrNotSupported, "scd: operation not supported")
+}

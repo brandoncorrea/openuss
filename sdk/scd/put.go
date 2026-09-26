@@ -42,6 +42,9 @@ func (s *Service) put(
 	ovn *scdussv1.EntityOVN,
 	params IntentParams,
 ) (OperationalIntent, error) {
+	if params.State == scdussv1.OperationalIntentState_Nonconforming {
+		return OperationalIntent{}, ErrNotSupported
+	}
 	if isInvalidIntent(params) {
 		return OperationalIntent{}, ErrRejected
 	}
