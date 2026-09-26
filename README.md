@@ -53,7 +53,7 @@ After getting a _technically working_ USS shell that passes the test suite, then
 
 The InterUSS project uses `*.localutm` for its services in Docker. Run this along with `make refresh-mocks` if you want to resolve these locally.
 
-    echo '127.0.0.1 scdsc.uss1.localutm scdsc.uss2.localutm dss1.uss1.localutm dss1.uss2.localutm' | sudo tee -a /etc/hosts
+    echo '127.0.0.1 scdsc.uss1.localutm scdsc.uss2.localutm dss1.uss1.localutm dss1.uss2.localutm scdsc.log.uss6.localutm' | sudo tee -a /etc/hosts
 
 ## License
 
