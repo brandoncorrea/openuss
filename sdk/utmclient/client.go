@@ -69,6 +69,10 @@ func (c *Client) Do(
 	}
 
 	request.Header.Add("Authorization", "Bearer "+token)
+
+	// TODO(gap): Every request (including GET) uses application/json
+	request.Header.Add("Content-Type", "application/json")
+
 	return c.HTTP.Do(request)
 }
 

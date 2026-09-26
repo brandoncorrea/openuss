@@ -86,6 +86,14 @@ func TestDoDropsAudienceToLowerCase(t *testing.T) {
 	requireGetSuccess(t, endpoint, handler, "scope-1")
 }
 
+func TestDoSubmitsJsonContent(t *testing.T) {
+	endpoint := "https://Openuss.uss5.localutm:8080/uss/v1/operational_intents/x"
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+	}
+	requireGetSuccess(t, endpoint, handler, "scope-1")
+}
+
 func TestDoSendsBody(t *testing.T) {
 	body := map[string]any{
 		"foo": "bar",
