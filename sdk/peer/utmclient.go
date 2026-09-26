@@ -28,3 +28,13 @@ func (p *UTMClient) GetOperationalIntentDetails(
 	}
 	return util.UnmarshalType[scdussv1.GetOperationalIntentDetailsResponse](response.Body)
 }
+
+func (p *UTMClient) NotifyOperationalIntentDetails(
+	ctx context.Context,
+	ussBaseURL scdussv1.SubscriptionUssBaseURL,
+	details scdussv1.PutOperationalIntentDetailsParameters,
+) error {
+	endpoint := string(ussBaseURL) + "/uss/v1/operational_intents"
+	p.Client.Post(ctx, endpoint, details, scdussv1.UtmStrategicCoordinationScope)
+	return nil
+}

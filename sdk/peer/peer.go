@@ -12,4 +12,9 @@ type Client interface {
 		scdussv1.OperationalIntentUssBaseURL,
 		scdussv1.EntityID,
 	) (scdussv1.GetOperationalIntentDetailsResponse, error)
+	NotifyOperationalIntentDetails(
+		context.Context,
+		scdussv1.SubscriptionUssBaseURL,
+		scdussv1.PutOperationalIntentDetailsParameters,
+	) error
 }
