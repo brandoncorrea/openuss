@@ -13,13 +13,13 @@ import (
 
 type InMemoryDSS struct {
 	intents       map[scdussv1.EntityID]scdussv1.OperationalIntent
-	subscriptions map[scdussv1.SubscriptionID]scdussv1.Subscription
+	subscriptions []scdussv1.Subscription
 }
 
 func NewInMemoryDSS() *InMemoryDSS {
 	return &InMemoryDSS{
 		intents:       map[scdussv1.EntityID]scdussv1.OperationalIntent{},
-		subscriptions: map[scdussv1.SubscriptionID]scdussv1.Subscription{},
+		subscriptions: []scdussv1.Subscription{},
 	}
 }
 
@@ -32,7 +32,17 @@ func (d *InMemoryDSS) PutOperationalIntentReference(
 	mustHaveContext(ctx)
 	return scdussv1.ChangeOperationalIntentReferenceResponse{
 		OperationalIntentReference: d.createOperationalIntentReference(id, ovn, params),
+		Subscribers:                d.subscribersToNotify(),
 	}, nil
+}
+
+func (d *InMemoryDSS) subscribersToNotify() []scdussv1.SubscriberToNotify {
+	subscribers := []scdussv1.SubscriberToNotify{}
+	for _, subscription := range d.subscriptions {
+		subscriber := scdussv1.SubscriberToNotify{UssBaseUrl: subscription.UssBaseUrl}
+		subscribers = append(subscribers, subscriber)
+	}
+	return subscribers
 }
 
 func (d *InMemoryDSS) createOperationalIntentReference(
@@ -78,7 +88,7 @@ func (d *InMemoryDSS) createImplicitSubscription(
 		NotifyForOperationalIntents: new(true),
 		DependentOperationalIntents: &[]scdussv1.EntityID{dependentIntent},
 	}
-	d.subscriptions[subscription.Id] = subscription
+	d.subscriptions = append(d.subscriptions, subscription)
 	return subscription.Id
 }
 
@@ -119,6 +129,11 @@ func (d *InMemoryDSS) OperationalIntents() []scdussv1.OperationalIntent {
 }
 
 func (d *InMemoryDSS) Subscription(id scdussv1.SubscriptionID) (scdussv1.Subscription, bool) {
-	subscription, found := d.subscriptions[id]
-	return subscription, found
+	index := slices.IndexFunc(d.subscriptions, func(subscription scdussv1.Subscription) bool {
+		return subscription.Id == id
+	})
+	if index < 0 {
+		return scdussv1.Subscription{}, false
+	}
+	return d.subscriptions[index], true
 }

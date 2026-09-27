@@ -35,6 +35,7 @@ func (p *UTMClient) NotifyOperationalIntentDetails(
 	details scdussv1.PutOperationalIntentDetailsParameters,
 ) error {
 	endpoint := string(ussBaseURL) + "/uss/v1/operational_intents"
+	// TODO(gap): No error handling
 	p.Client.Post(ctx, endpoint, details, scdussv1.UtmStrategicCoordinationScope)
 	return nil
 }

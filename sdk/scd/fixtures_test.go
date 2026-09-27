@@ -1,15 +1,20 @@
 package scd_test
 
 import (
+	"testing"
+
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
+	"github.com/stretchr/testify/require"
 )
 
-const ussBaseURL = "http://openuss.localutm"
-
-const squareSideDegrees = 0.001
+const (
+	ussBaseURL        = "http://openuss.localutm"
+	peerUSSBaseURL    = "http://uss1.localutm"
+	squareSideDegrees = 0.001
+)
 
 func sharedCorner() scdussv1.LatLngPoint {
 	return scdussv1.LatLngPoint{Lng: -80.6, Lat: 37.2}
@@ -45,4 +50,18 @@ func newService() (*scd.Service, *dss.InMemoryDSS) {
 	dssClient := dss.NewInMemoryDSS()
 	service := scd.New(dssClient, nil, scd.NewInMemoryIntentStore(), ussBaseURL)
 	return service, dssClient
+}
+
+func putPeerIntent(t *testing.T, dssClient *dss.InMemoryDSS) {
+	t.Helper()
+	params := scdussv1.PutOperationalIntentReferenceParameters{
+		Extents:    newSquareVolumes(sharedCorner()),
+		State:      scdussv1.OperationalIntentState_Accepted,
+		UssBaseUrl: peerUSSBaseURL,
+		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
+			UssBaseUrl: peerUSSBaseURL,
+		},
+	}
+	_, err := dssClient.PutOperationalIntentReference(t.Context(), scdtest.NewEntityID(), nil, params)
+	require.NoError(t, err)
 }

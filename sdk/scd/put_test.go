@@ -13,6 +13,7 @@ import (
 	"bwawan.com/openuss/sdk/internal/util"
 	"bwawan.com/openuss/sdk/internal/wiretest"
 	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/peer/peertest"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/require"
@@ -37,8 +38,6 @@ func newEndedIntentParams() scd.IntentParams {
 	params.Volumes[0].TimeEnd.Value = oneSecondAgo.Format(time.RFC3339)
 	return params
 }
-
-const peerUSSBaseURL = "http://uss1.localutm"
 
 func newServiceFromPeers(t *testing.T, peers ...scd.OperationalIntent) *scd.Service {
 	t.Helper()
@@ -417,4 +416,38 @@ func TestCreateNonconformingIntentIsNotSupported(t *testing.T) {
 	require.Zero(t, intent)
 	require.ErrorIs(t, err, scd.ErrNotSupported)
 	requireNothingStored(t, service)
+}
+
+func TestCreateOperationalIntentNotifiesPeerSubscriber(t *testing.T) {
+	dssClient := dss.NewInMemoryDSS()
+	recorder := &peertest.NotificationRecorder{}
+	service := scd.New(dssClient, recorder, scd.NewInMemoryIntentStore(), ussBaseURL)
+	_, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(distantCorner()))
+	require.NoError(t, err)
+	putPeerIntent(t, dssClient)
+	params := newIntentParams()
+
+	intent, err := service.CreateOperationalIntent(t.Context(), params)
+
+	require.NoError(t, err)
+	dssIntent, found := dssClient.OperationalIntent(intent.EntityID)
+	require.True(t, found)
+	require.Len(t, recorder.Notifications, 1)
+	notified := recorder.Notifications[0]
+	require.EqualValues(t, peerUSSBaseURL, notified.USSBaseURL)
+	require.Equal(t, intent.EntityID, notified.Details.OperationalIntentId)
+	require.NotNil(t, notified.Details.OperationalIntent)
+	require.Equal(t, dssIntent.Reference, notified.Details.OperationalIntent.Reference)
+	require.Equal(t, params.Volumes, *notified.Details.OperationalIntent.Details.Volumes)
+	require.Equal(t, params.Priority, *notified.Details.OperationalIntent.Details.Priority)
+}
+
+func TestCreateOperationalIntentDoesNotNotifyItsOwnSubscription(t *testing.T) {
+	recorder := &peertest.NotificationRecorder{}
+	service := scd.New(dss.NewInMemoryDSS(), recorder, scd.NewInMemoryIntentStore(), ussBaseURL)
+
+	_, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+
+	require.NoError(t, err)
+	require.Empty(t, recorder.Notifications)
 }

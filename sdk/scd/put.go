@@ -13,6 +13,8 @@ import (
 	"bwawan.com/openuss/sdk/internal/volume"
 )
 
+const subscriptionURL = scdussv1.SubscriptionUssBaseURL("x")
+
 func (s *Service) CreateOperationalIntent(
 	ctx context.Context,
 	params IntentParams,
@@ -77,7 +79,38 @@ func (s *Service) put(
 		result, _ = s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	}
 
+	otherSubscribers := util.Remove(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) bool {
+		return subscriber.UssBaseUrl == subscriptionURL
+	})
+
+	// TODO(gap): Only the first subscriber is notified - the rest are ignored
+	if len(otherSubscribers) > 0 {
+		s.notifyPeer(ctx, otherSubscribers[0], result, params)
+	}
+
 	return s.saveOperationalIntent(params, result), nil
+}
+
+func (s *Service) notifyPeer(
+	ctx context.Context,
+	subscriber scdussv1.SubscriberToNotify,
+	result scdussv1.ChangeOperationalIntentReferenceResponse,
+	params IntentParams,
+) {
+	s.Peer.NotifyOperationalIntentDetails(
+		ctx,
+		subscriber.UssBaseUrl,
+		// TODO(gap): Missing 'Subscriptions' attribute
+		scdussv1.PutOperationalIntentDetailsParameters{
+			OperationalIntentId: result.OperationalIntentReference.Id,
+			OperationalIntent: &scdussv1.OperationalIntent{
+				Reference: result.OperationalIntentReference,
+				Details: scdussv1.OperationalIntentDetails{
+					Volumes:  &params.Volumes,
+					Priority: &params.Priority,
+				},
+			},
+		})
 }
 
 func isBlockingUs(
@@ -112,7 +145,7 @@ func (s *Service) createPutRequestParams(
 		Key:        new(key),
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
 			// TODO(gap): This probably needs to be a proper URL
-			UssBaseUrl: scdussv1.SubscriptionUssBaseURL("x"),
+			UssBaseUrl: subscriptionURL,
 		},
 	}
 }

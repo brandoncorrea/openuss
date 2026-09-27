@@ -6,9 +6,12 @@ import (
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/dss"
+	"bwawan.com/openuss/sdk/internal/util"
 	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )
+
+const subscriberURL scdussv1.SubscriptionUssBaseURL = "http://uss.example.com"
 
 func putIntent(t *testing.T, authority *dss.InMemoryDSS) scdussv1.OperationalIntentReference {
 	t.Helper()
@@ -16,7 +19,7 @@ func putIntent(t *testing.T, authority *dss.InMemoryDSS) scdussv1.OperationalInt
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: scdtest.NewVolumes4D(),
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
-			UssBaseUrl: "http://uss.example.com",
+			UssBaseUrl: subscriberURL,
 		},
 	}
 	result, err := authority.PutOperationalIntentReference(t.Context(), id, nil, params)
@@ -159,7 +162,7 @@ func TestInMemoryDSSFindsTheImplicitSubscription(t *testing.T) {
 	subscription, found := authority.Subscription(reference.SubscriptionId)
 
 	require.True(t, found)
-	require.EqualValues(t, "http://uss.example.com", subscription.UssBaseUrl)
+	require.Equal(t, subscriberURL, subscription.UssBaseUrl)
 }
 
 func TestInMemoryDSSDeletesOperationalIntent(t *testing.T) {
@@ -207,4 +210,25 @@ func TestInMemoryDSSDeletePanicsWithoutContext(t *testing.T) {
 	require.Panics(t, func() {
 		authority.DeleteOperationalIntentReference(nil, reference.Id, *reference.Ovn)
 	})
+}
+
+func TestInMemoryDSSListsEverySubscriberToNotifyOldestFirst(t *testing.T) {
+	authority := dss.NewInMemoryDSS()
+	putIntent(t, authority)
+	params := scdussv1.PutOperationalIntentReferenceParameters{
+		Extents: scdtest.NewVolumes4D(),
+		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
+			UssBaseUrl: "http://other.example.com",
+		},
+	}
+
+	result, err := authority.PutOperationalIntentReference(t.Context(), scdtest.NewEntityID(), nil, params)
+
+	require.NoError(t, err)
+	subscriberURLs := util.Map(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) scdussv1.SubscriptionUssBaseURL {
+		return subscriber.UssBaseUrl
+	})
+	require.Equal(t,
+		[]scdussv1.SubscriptionUssBaseURL{subscriberURL, "http://other.example.com"},
+		subscriberURLs)
 }
