@@ -39,3 +39,7 @@ refresh-mocks:
 .PHONY: automated-tests
 automated-tests:
 	set -a; [ -f .env ] && . .env; set +a; scripts/automated-tests.sh
+
+.PHONY: automated-tests-us
+automated-tests-us:
+	set -a; [ -f .env ] && . .env; set +a; scripts/automated-tests-us.sh

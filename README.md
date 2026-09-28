@@ -41,13 +41,14 @@ After getting a _technically working_ USS shell that passes the test suite, then
 
 ## Development
 
-    make build              # Build the binary
-    make test               # Run unit tests
-    make image              # Build the docker image
-    make run                # Start a docker service
-    make stop               # Stop the docker service
-    make refresh-mocks      # Restart the local InterUSS ecosystem
-    make automated-tests    # Run the automated test suite
+    make build                 # Build the binary
+    make test                  # Run unit tests
+    make image                 # Build the docker image
+    make run                   # Start a docker service
+    make stop                  # Stop the docker service
+    make refresh-mocks         # Restart the local InterUSS ecosystem
+    make automated-tests       # Run the automated test suite
+    make automated-tests-us    # Run the suite on the public US implementation baseline
 
 ### Resolving localutm
 
