@@ -464,9 +464,6 @@ v1:
             has_severity:
               higher_than: Low
         pass_condition:
-          # When considering all of the applicable elements...
           elements:
-            # ...the number of applicable elements should be 4...
             count:
-              # ...specifically, the 4x "DSS instance is publicly accessible" checks we deem acceptable
-              equal_to: 4
+              equal_to: 0
