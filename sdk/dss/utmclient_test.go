@@ -30,7 +30,7 @@ func TestCreateIntentRequestParameters(t *testing.T) {
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPut, r.Method)
 		scopes := string(scdussv1.UtmStrategicCoordinationScope) + "," + string(scdussv1.UtmConformanceMonitoringSaScope)
-		token := "Bearer audience=dss.example.com&scopes=" + scopes
+		token := "Bearer audience=" + dsstest.Host + "&scopes=" + scopes
 		assert.Equal(t, token, r.Header.Get("Authorization"))
 		assert.Equal(t, "/dss/v1/operational_intent_references/"+string(entityID), r.RequestURI)
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})
@@ -87,7 +87,7 @@ func TestDeleteIntentRequestParameters(t *testing.T) {
 	ovn := uuid.New().String()
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
-		token := "Bearer audience=dss.example.com&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
+		token := "Bearer audience=" + dsstest.Host + "&scopes=" + string(scdussv1.UtmStrategicCoordinationScope)
 		assert.Equal(t, token, r.Header.Get("Authorization"))
 		assert.Equal(t, "/dss/v1/operational_intent_references/"+entityID+"/"+ovn, r.RequestURI)
 		api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{})

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"bwawan.com/openuss/sdk/api"
@@ -13,14 +12,10 @@ import (
 	"bwawan.com/openuss/sdk/httpclient"
 	"bwawan.com/openuss/sdk/internal/wiretest"
 	"bwawan.com/openuss/sdk/utmclient"
+	"bwawan.com/openuss/sdk/utmclient/utmclienttest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func newClient(t *testing.T, handler http.HandlerFunc) *utmclient.Client {
-	server := httptest.NewTestServer(t, handler)
-	return utmclient.New(auth.NewInMemoryTokenSource(), server.Client())
-}
 
 func TestNewDefaultsHTTPClient(t *testing.T) {
 	client := utmclient.New(auth.NewInMemoryTokenSource(), nil)
@@ -34,7 +29,7 @@ func requireGetSuccess(
 	scopes ...api.RequiredScope,
 ) {
 	t.Helper()
-	_, err := newClient(t, handler).Get(t.Context(), endpoint, scopes...)
+	_, err := utmclienttest.NewClient(t, handler).Get(t.Context(), endpoint, scopes...)
 	require.NoError(t, err)
 }
 
@@ -46,27 +41,27 @@ func requirePostSuccess(
 	scopes ...api.RequiredScope,
 ) {
 	t.Helper()
-	_, err := newClient(t, handler).Post(t.Context(), endpoint, body, scopes...)
+	_, err := utmclienttest.NewClient(t, handler).Post(t.Context(), endpoint, body, scopes...)
 	require.NoError(t, err)
 }
 
 func TestDoRequestOptions(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		assert.Nil(t, r.TLS)
-		assert.Equal(t, "dss.example.com", r.Host)
+		assert.Equal(t, "dss.localutm", r.Host)
 		assert.Equal(t, "/foo", r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
 	}
-	requireGetSuccess(t, "http://dss.example.com/foo", handler)
+	requireGetSuccess(t, "http://dss.localutm/foo", handler)
 }
 
 func TestDoUsesHostnameAsAudience(t *testing.T) {
 	tokenSource := auth.NewInMemoryTokenSource()
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		token, _ := tokenSource.Token(t.Context(), "dss.example.com", "scope-1", "scope-2")
+		token, _ := tokenSource.Token(t.Context(), "dss.localutm", "scope-1", "scope-2")
 		assert.Equal(t, "Bearer "+token, r.Header.Get("Authorization"))
 	}
-	requireGetSuccess(t, "http://dss.example.com", handler, "scope-1", "scope-2")
+	requireGetSuccess(t, "http://dss.localutm", handler, "scope-1", "scope-2")
 }
 
 func TestDoStripsPortFromAudience(t *testing.T) {
@@ -104,7 +99,7 @@ func TestDoSendsBody(t *testing.T) {
 		assert.NoError(t, json.UnmarshalRead(r.Body, &requestedBody))
 		assert.Equal(t, body, requestedBody)
 	}
-	requirePostSuccess(t, "http://dss.example.com", body, handler)
+	requirePostSuccess(t, "http://dss.localutm", body, handler)
 }
 
 func TestDoSendsNoBodyWhenNil(t *testing.T) {
@@ -113,50 +108,50 @@ func TestDoSendsNoBodyWhenNil(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, body)
 	}
-	requireGetSuccess(t, "http://dss.example.com", handler)
+	requireGetSuccess(t, "http://dss.localutm", handler)
 }
 
 func TestDoFailsOnUnparsableURL(t *testing.T) {
-	client := newClient(t, wiretest.AssertNotCalledHandler(t))
+	client := utmclienttest.NewClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "http://%zz")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to parse url")
 }
 
 func TestDoFailsOnURLWithoutHostname(t *testing.T) {
-	client := newClient(t, wiretest.AssertNotCalledHandler(t))
+	client := utmclienttest.NewClient(t, wiretest.AssertNotCalledHandler(t))
 	response, err := client.Get(t.Context(), "/foo")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, `utmclient: url "/foo" has no hostname`)
 }
 
 func TestDoFailsToCreateNewRequest(t *testing.T) {
-	client := newClient(t, wiretest.AssertNotCalledHandler(t))
-	response, err := client.Get(nil, "http://dss.example.com")
+	client := utmclienttest.NewClient(t, wiretest.AssertNotCalledHandler(t))
+	response, err := client.Get(nil, "http://dss.localutm")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to create request: net/http:")
 }
 
 func TestDoFailsToProduceToken(t *testing.T) {
-	client := newClient(t, wiretest.AssertNotCalledHandler(t))
+	client := utmclienttest.NewClient(t, wiretest.AssertNotCalledHandler(t))
 	client.TokenSource = auth.NewInMemoryErrorTokenSource(errors.New("Boom!"))
-	response, err := client.Get(t.Context(), "http://dss.example.com")
+	response, err := client.Get(t.Context(), "http://dss.localutm")
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to acquire auth token: Boom!")
 }
 
 func TestDoFailsToMarshalBody(t *testing.T) {
-	client := newClient(t, wiretest.AssertNotCalledHandler(t))
+	client := utmclienttest.NewClient(t, wiretest.AssertNotCalledHandler(t))
 	unmarshallable := make(chan int)
-	response, err := client.Post(t.Context(), "http://dss.example.com", unmarshallable)
+	response, err := client.Post(t.Context(), "http://dss.localutm", unmarshallable)
 	require.Zero(t, response)
 	require.ErrorContains(t, err, "utmclient: failed to encode request body: json:")
 }
 
 func TestDoReturnsTransportError(t *testing.T) {
-	client := newClient(t, wiretest.AssertNotCalledHandler(t))
+	client := utmclienttest.NewClient(t, wiretest.AssertNotCalledHandler(t))
 	client.HTTP = httpclient.New(wiretest.NewErrorClient(errors.New("Boom!")))
-	response, err := client.Get(t.Context(), "http://dss.example.com")
+	response, err := client.Get(t.Context(), "http://dss.localutm")
 	require.Zero(t, response)
-	require.ErrorContains(t, err, `Get "http://dss.example.com": Boom!`)
+	require.ErrorContains(t, err, `Get "http://dss.localutm": Boom!`)
 }

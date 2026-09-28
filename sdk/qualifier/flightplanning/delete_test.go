@@ -14,21 +14,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newDeleteRequest(flightPlanID *string) *http.Request {
+func newDeleteRequest(flightID uuid.UUID) *http.Request {
 	request := httptest.NewRequest(http.MethodDelete, "/blah", nil)
-	if flightPlanID != nil {
-		request.SetPathValue("flight_plan_id", *flightPlanID)
-	}
+	request.SetPathValue("flight_plan_id", flightID.String())
 	return request
 }
 
-func newSavedFlight(handler *flightplanning.Handler) flightplanning.FlightPlanRecord {
-	flight := flightplanning.FlightPlanRecord{
+func newSavedRecord(handler *flightplanning.Handler) flightplanning.FlightPlanRecord {
+	record := flightplanning.FlightPlanRecord{
 		ID:       uuid.New(),
 		EntityID: scdtest.NewEntityID(),
 	}
-	handler.Flights.Upsert(flight)
-	return flight
+	handler.Flights.Upsert(record)
+	return record
 }
 
 func TestDeleteFlightPlanSucceeds(t *testing.T) {
@@ -40,15 +38,15 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 		},
 	}
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
-	flight := newSavedFlight(handler)
+	record := newSavedRecord(handler)
 
 	recorder := httptest.NewRecorder()
-	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(flight.ID.String())))
+	handler.DeleteFlightPlan(recorder, newDeleteRequest(record.ID))
 
 	wiretest.RequireJSON(t, recorder, flightplanning.FlightPlanResponse{
 		FlightPlanStatus: flightplanning.FlightPlanStatusClosed,
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 	})
-	require.Equal(t, flight.EntityID, deleted)
-	require.Nil(t, handler.Flights.Get(flight.ID))
+	require.Equal(t, record.EntityID, deleted)
+	require.Nil(t, handler.Flights.Get(record.ID))
 }

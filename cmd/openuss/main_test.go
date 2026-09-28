@@ -116,7 +116,7 @@ func TestNewHandlerLogsUnroutedRequests(t *testing.T) {
 }
 
 func TestNewPlanningHandlerMissingUSSBaseURL(t *testing.T) {
-	t.Setenv("DSS_BASE_URL", "http://dss.example.com")
+	t.Setenv("DSS_BASE_URL", "http://dss.localutm")
 	t.Setenv("USS_BASE_URL", "\r\n\t ")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
 	intents := scd.NewInMemoryIntentStore()
@@ -125,7 +125,7 @@ func TestNewPlanningHandlerMissingUSSBaseURL(t *testing.T) {
 }
 
 func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
-	t.Setenv("DSS_BASE_URL", "http://dss.example.com:8080/blah")
+	t.Setenv("DSS_BASE_URL", "http://dss.localutm:8080/blah")
 	t.Setenv("USS_BASE_URL", "the-uss-base-url")
 	dummy, _ := auth.NewDummyOAuth("", "", nil)
 	intents := scd.NewInMemoryIntentStore()
@@ -133,7 +133,7 @@ func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
 	require.NoError(t, err)
 	service := handler.SCD.(*scd.Service)
 	dssClient := service.DSS.(*dss.UTMClient)
-	require.Equal(t, "http://dss.example.com:8080/blah", dssClient.BaseURL)
+	require.Equal(t, "http://dss.localutm:8080/blah", dssClient.BaseURL)
 	require.Equal(t, dummy, dssClient.Client.TokenSource)
 	require.Equal(t, httpclient.DefaultTimeout, dssClient.Client.HTTP.HTTP.Timeout)
 	peerClient := service.Peer.(*peer.UTMClient)

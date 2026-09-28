@@ -1,11 +1,11 @@
 package flightplanning_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"uuid"
 
@@ -31,20 +31,20 @@ func newFlightPlanBody() flightplanning.UpsertFlightPlanRequest {
 	}
 }
 
-func newFlightParams() (uuid.UUID, flightplanning.UpsertFlightPlanRequest) {
-	return uuid.New(), newFlightPlanBody()
-}
-
-func putFlightPlanRequest(id *uuid.UUID, body flightplanning.UpsertFlightPlanRequest) *http.Request {
-	bytes, err := json.Marshal(body)
-	if err != nil {
-		panic(err)
-	}
-	request := httptest.NewRequest(http.MethodPut, "/blah", strings.NewReader(string(bytes)))
-	if id != nil {
-		request.SetPathValue("flight_plan_id", id.String())
-	}
-	return request
+func putFlightPlan(
+	t *testing.T,
+	handler *flightplanning.Handler,
+	flightID uuid.UUID,
+	body flightplanning.UpsertFlightPlanRequest,
+) *httptest.ResponseRecorder {
+	t.Helper()
+	encoded, err := json.Marshal(body)
+	require.NoError(t, err)
+	request := httptest.NewRequest(http.MethodPut, "/blah", bytes.NewReader(encoded))
+	request.SetPathValue("flight_plan_id", flightID.String())
+	recorder := httptest.NewRecorder()
+	handler.PutFlightPlan(recorder, request)
+	return recorder
 }
 
 func rejectWith(err error) scdtest.Stub {
@@ -59,19 +59,19 @@ func rejectWith(err error) scdtest.Stub {
 }
 
 func TestCreateFlightPlanSucceeds(t *testing.T) {
-	flightID, flight := newFlightParams()
+	flightID := uuid.New()
+	body := newFlightPlanBody()
 	coordination, created := scdtest.NewCreateStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
 	require.Equal(t, scd.IntentParams{
-		Volumes:  flight.FlightPlan.BasicInformation.Area,
+		Volumes:  body.FlightPlan.BasicInformation.Area,
 		State:    scdussv1.OperationalIntentState_Accepted,
 		Priority: 2,
 	}, created.Params)
@@ -81,7 +81,8 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 }
 
 func TestUpdateFlightPlanSucceeds(t *testing.T) {
-	flightID, flight := newFlightParams()
+	flightID := uuid.New()
+	body := newFlightPlanBody()
 	existing := flightplanning.FlightPlanRecord{ID: flightID, EntityID: scdtest.NewEntityID()}
 	var receivedID scdussv1.EntityID
 	var received scd.IntentParams
@@ -101,26 +102,25 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 	handler.Flights.Upsert(existing)
 
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
 	require.Equal(t, existing.EntityID, receivedID)
-	require.Equal(t, flight.FlightPlan.BasicInformation.Area, received.Volumes)
+	require.Equal(t, body.FlightPlan.BasicInformation.Area, received.Volumes)
 	require.Equal(t, []flightplanning.FlightPlanRecord{existing}, handler.Flights.List())
 }
 
 func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
-	flightID, flight := newFlightParams()
-	flight.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
+	flightID := uuid.New()
+	body := newFlightPlanBody()
+	body.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
 	coordination, created := scdtest.NewCreateStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
@@ -130,14 +130,14 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 }
 
 func TestUASStateOffNominalSubmitsNonconformingIntent(t *testing.T) {
-	flightID, flight := newFlightParams()
-	flight.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
-	flight.FlightPlan.BasicInformation.UASState = flightplanning.UASStateOffNominal
+	flightID := uuid.New()
+	body := newFlightPlanBody()
+	body.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
+	body.FlightPlan.BasicInformation.UASState = flightplanning.UASStateOffNominal
 	coordination, created := scdtest.NewCreateStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
@@ -149,9 +149,9 @@ func TestUASStateOffNominalSubmitsNonconformingIntent(t *testing.T) {
 func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 	handler := flightplanning.New(rejectWith(scd.ErrRejected), flightplanning.NewInMemoryFlightStore())
 
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	flightID := uuid.New()
+	body := newFlightPlanBody()
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultRejected,
@@ -163,9 +163,9 @@ func TestPutRejectedFlightPlanIsNotPlanned(t *testing.T) {
 func TestPutUnsupportedFlightPlanIsNotPlanned(t *testing.T) {
 	handler := flightplanning.New(rejectWith(scd.ErrNotSupported), flightplanning.NewInMemoryFlightStore())
 
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	flightID := uuid.New()
+	body := newFlightPlanBody()
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultNotSupported,
@@ -177,9 +177,9 @@ func TestPutUnsupportedFlightPlanIsNotPlanned(t *testing.T) {
 func TestPutNewFlightPlanInConflictIsNotPlanned(t *testing.T) {
 	handler := flightplanning.New(rejectWith(scd.ErrConflict), flightplanning.NewInMemoryFlightStore())
 
-	flightID, flight := newFlightParams()
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flight))
+	flightID := uuid.New()
+	body := newFlightPlanBody()
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultRejected,
@@ -198,19 +198,19 @@ func TestPutExistingFlightPlanInConflictStaysPlanned(t *testing.T) {
 		},
 	}
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
-	flightID, flightParams := newFlightParams()
-	flight := flightplanning.FlightPlanRecord{
+	flightID := uuid.New()
+	body := newFlightPlanBody()
+	existing := flightplanning.FlightPlanRecord{
 		ID:       flightID,
 		EntityID: scdtest.NewEntityID(),
 	}
-	handler.Flights.Upsert(flight)
+	handler.Flights.Upsert(existing)
 
-	response := httptest.NewRecorder()
-	handler.PutFlightPlan(response, putFlightPlanRequest(&flightID, flightParams))
+	response := putFlightPlan(t, handler, flightID, body)
 
 	wiretest.RequireJSON(t, response, flightplanning.FlightPlanResponse{
 		PlanningResult:   flightplanning.PlanningActivityResultRejected,
 		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
-	require.ElementsMatch(t, []flightplanning.FlightPlanRecord{flight}, handler.Flights.List())
+	require.ElementsMatch(t, []flightplanning.FlightPlanRecord{existing}, handler.Flights.List())
 }

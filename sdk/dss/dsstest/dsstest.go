@@ -3,7 +3,6 @@ package dsstest
 import (
 	"encoding/json/v2"
 	"net/http"
-	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -11,17 +10,19 @@ import (
 
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
-	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/internal/util"
-	"bwawan.com/openuss/sdk/utmclient"
+	"bwawan.com/openuss/sdk/utmclient/utmclienttest"
+)
+
+const (
+	Host    = "dss.localutm"
+	BaseURL = "http://" + Host
 )
 
 func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.UTMClient {
 	t.Helper()
-	server := httptest.NewTestServer(t, http.HandlerFunc(handler))
-	client := utmclient.New(auth.NewInMemoryTokenSource(), server.Client())
-	return dss.New("http://dss.example.com", client)
+	return dss.New(BaseURL, utmclienttest.NewClient(t, handler))
 }
 
 func NewEcosystemHandler(registered []scdussv1.OperationalIntent) http.HandlerFunc {
@@ -29,7 +30,7 @@ func NewEcosystemHandler(registered []scdussv1.OperationalIntent) http.HandlerFu
 	handleUSS := ussHandlerFor(registered)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Host == "dss.localutm" {
+		if r.Host == Host {
 			handleDSS(w, r)
 		} else {
 			handleUSS(w, r)

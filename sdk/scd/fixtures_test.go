@@ -1,29 +1,25 @@
 package scd_test
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
-	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/dss/dsstest"
 	"bwawan.com/openuss/sdk/internal/util"
 	"bwawan.com/openuss/sdk/internal/wiretest"
 	"bwawan.com/openuss/sdk/peer"
+	"bwawan.com/openuss/sdk/peer/peertest"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
-	"bwawan.com/openuss/sdk/utmclient"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	ussBaseURL        = "http://openuss.localutm"
-	peerUSSBaseURL    = "http://uss1.localutm"
-	squareSideDegrees = 0.001
+	ussBaseURL     = "http://openuss.localutm"
+	peerUSSBaseURL = "http://uss1.localutm"
 )
 
 func sharedCorner() scdussv1.LatLngPoint {
@@ -34,27 +30,13 @@ func distantCorner() scdussv1.LatLngPoint {
 	return scdussv1.LatLngPoint{Lng: -80.5, Lat: 37.2}
 }
 
-func newSquareVolumes(corner scdussv1.LatLngPoint) []scdussv1.Volume4D {
-	volumes := scdtest.NewVolumes4D()
-	volumes[0].Volume.OutlineCircle = nil
-	volumes[0].Volume.OutlinePolygon = &scdussv1.Polygon{
-		Vertices: []scdussv1.LatLngPoint{
-			corner,
-			{Lng: corner.Lng + squareSideDegrees, Lat: corner.Lat},
-			{Lng: corner.Lng + squareSideDegrees, Lat: corner.Lat + squareSideDegrees},
-			{Lng: corner.Lng, Lat: corner.Lat + squareSideDegrees},
-		},
-	}
-	return volumes
-}
-
 func newIntentParams() scd.IntentParams {
 	return newIntentParamsAt(sharedCorner())
 }
 
 func newIntentParamsAt(corner scdussv1.LatLngPoint) scd.IntentParams {
 	return scd.IntentParams{
-		Volumes:  newSquareVolumes(corner),
+		Volumes:  scdtest.NewSquareVolumes4DAt(corner),
 		State:    scdussv1.OperationalIntentState_Accepted,
 		Priority: 2,
 	}
@@ -71,14 +53,14 @@ func newEndedIntentParams() scd.IntentParams {
 func newIntent() scd.OperationalIntent {
 	return scd.OperationalIntent{
 		EntityID: scdtest.NewEntityID(),
-		Volumes:  newSquareVolumes(sharedCorner()),
+		Volumes:  scdtest.NewSquareVolumes4DAt(sharedCorner()),
 		Priority: 2,
 	}
 }
 
 func newOwnIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
 	intent := newIntent()
-	intent.Volumes = newSquareVolumes(corner)
+	intent.Volumes = scdtest.NewSquareVolumes4DAt(corner)
 	intent.OVN = scdussv1.EntityOVN(uuid.New().String())
 	intent.USSBaseURL = ussBaseURL
 	return intent
@@ -104,7 +86,7 @@ func newPeerIntent() scd.OperationalIntent {
 
 func newPeerIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
 	intent := newPeerIntent()
-	intent.Volumes = newSquareVolumes(corner)
+	intent.Volumes = scdtest.NewSquareVolumes4DAt(corner)
 	return intent
 }
 
@@ -120,23 +102,14 @@ func newService() (*scd.Service, *dss.InMemoryDSS) {
 	return service, dssClient
 }
 
-func newTestUTMClient(t *testing.T, handler http.Handler) *utmclient.Client {
-	t.Helper()
-	return utmclient.New(
-		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, handler).Client(),
-	)
-}
-
 func newServiceWithPeerClient(
 	t *testing.T,
 	peerClient peer.Client,
 	registered ...scd.OperationalIntent,
 ) *scd.Service {
 	t.Helper()
-	dssClient := newTestUTMClient(t, dsstest.NewEcosystemHandler(toDSSIntents(registered...)))
 	return scd.New(
-		dss.New("https://dss.localutm", dssClient),
+		dsstest.NewDSS(t, dsstest.NewEcosystemHandler(toDSSIntents(registered...))),
 		peerClient,
 		scd.NewInMemoryIntentStore(),
 		ussBaseURL,
@@ -145,14 +118,14 @@ func newServiceWithPeerClient(
 
 func newServiceInEcosystem(t *testing.T, registered ...scd.OperationalIntent) *scd.Service {
 	t.Helper()
-	peerClient := newTestUTMClient(t, dsstest.NewEcosystemHandler(toDSSIntents(registered...)))
-	return newServiceWithPeerClient(t, peer.New(peerClient), registered...)
+	peerClient := peertest.NewPeer(t, dsstest.NewEcosystemHandler(toDSSIntents(registered...)))
+	return newServiceWithPeerClient(t, peerClient, registered...)
 }
 
 func newServiceWithoutPeerLookups(t *testing.T, registered ...scd.OperationalIntent) *scd.Service {
 	t.Helper()
-	peerClient := newTestUTMClient(t, wiretest.AssertNotCalledHandler(t))
-	return newServiceWithPeerClient(t, peer.New(peerClient), registered...)
+	peerClient := peertest.NewPeer(t, wiretest.AssertNotCalledHandler(t))
+	return newServiceWithPeerClient(t, peerClient, registered...)
 }
 
 func toDSSIntents(intents ...scd.OperationalIntent) []scdussv1.OperationalIntent {
@@ -198,7 +171,7 @@ func newCoordinatedIntent(t *testing.T, service *scd.Service) scd.OperationalInt
 func putPeerIntent(t *testing.T, dssClient *dss.InMemoryDSS) {
 	t.Helper()
 	params := scdussv1.PutOperationalIntentReferenceParameters{
-		Extents:    newSquareVolumes(sharedCorner()),
+		Extents:    scdtest.NewSquareVolumes4DAt(sharedCorner()),
 		State:      scdussv1.OperationalIntentState_Accepted,
 		UssBaseUrl: peerUSSBaseURL,
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
