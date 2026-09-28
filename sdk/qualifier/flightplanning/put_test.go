@@ -73,7 +73,7 @@ func TestPutNewFlightPlanCreatesAnOperationalIntent(t *testing.T) {
 	require.Equal(t, scd.IntentParams{
 		Volumes:  body.FlightPlan.BasicInformation.Area,
 		State:    scdussv1.OperationalIntentState_Accepted,
-		Priority: 2,
+		Priority: scdussv1.Priority(body.FlightPlan.F3548.Priority),
 	}, created.Params)
 	require.Equal(t,
 		[]flightplanning.FlightPlanRecord{{ID: flightID, EntityID: created.EntityID}},
