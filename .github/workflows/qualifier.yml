@@ -1,4 +1,4 @@
-name: F3548 conformance
+name: US implementation conformance
 
 on:
   push:
@@ -48,12 +48,12 @@ jobs:
       - name: Upload the Report
         uses: actions/upload-artifact@v7
         with:
-          name: uss_qualifier-openuss_f3548
+          name: uss_qualifier-openuss_local
           path: monitoring/monitoring/uss_qualifier/output
           if-no-files-found: warn
 
       - name: Stage the sequence view for Pages
-        run: mv monitoring/monitoring/uss_qualifier/output/openuss_f3548/sequence public/
+        run: mv monitoring/monitoring/uss_qualifier/output/openuss_local/sequence public/
 
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@v5
