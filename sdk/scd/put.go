@@ -68,7 +68,10 @@ func (s *Service) put(
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		// TODO(gap): We only fetch the first missing intent - the rest are ignored
 		missing := (*conflict.MissingOperationalIntents)[0]
-		details, _ := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
+		details, err := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
+		if err != nil {
+			return OperationalIntent{}, ErrConflict
+		}
 		peerIntent := intentFromDetails(details)
 		if isBlockingUs(peerIntent, intent, params) {
 			return OperationalIntent{}, ErrConflict

@@ -1,6 +1,7 @@
 package scd_test
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -39,36 +40,35 @@ func newEndedIntentParams() scd.IntentParams {
 	return params
 }
 
-func newServiceFromPeers(t *testing.T, peers ...scd.OperationalIntent) *scd.Service {
+func newTestUTMClient(t *testing.T, handler http.Handler) *utmclient.Client {
 	t.Helper()
-	client := utmclient.New(
+	return utmclient.New(
 		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, dsstest.NewPeerHandler(toDSSIntents(peers...))).Client(),
+		httptest.NewTestServer(t, handler).Client(),
 	)
+}
+
+func newServiceWithPeer(t *testing.T, peerClient peer.Client, dssIntents ...scd.OperationalIntent) *scd.Service {
+	t.Helper()
+	dssClient := newTestUTMClient(t, dsstest.NewPeerHandler(toDSSIntents(dssIntents...)))
 	return scd.New(
-		dss.New("https://dss.localutm", client),
-		peer.New(client),
+		dss.New("https://dss.localutm", dssClient),
+		peerClient,
 		scd.NewInMemoryIntentStore(),
 		ussBaseURL,
 	)
 }
 
+func newServiceFromPeers(t *testing.T, peers ...scd.OperationalIntent) *scd.Service {
+	t.Helper()
+	peerClient := newTestUTMClient(t, dsstest.NewPeerHandler(toDSSIntents(peers...)))
+	return newServiceWithPeer(t, peer.New(peerClient), peers...)
+}
+
 func newServiceWithoutPeerLookups(t *testing.T, dssIntents ...scd.OperationalIntent) *scd.Service {
 	t.Helper()
-	dssClient := utmclient.New(
-		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, dsstest.NewPeerHandler(toDSSIntents(dssIntents...))).Client(),
-	)
-	peerClient := utmclient.New(
-		auth.NewInMemoryTokenSource(),
-		httptest.NewTestServer(t, wiretest.AssertNotCalledHandler(t)).Client(),
-	)
-	return scd.New(
-		dss.New("https://dss.localutm", dssClient),
-		peer.New(peerClient),
-		scd.NewInMemoryIntentStore(),
-		ussBaseURL,
-	)
+	peerClient := newTestUTMClient(t, wiretest.AssertNotCalledHandler(t))
+	return newServiceWithPeer(t, peer.New(peerClient), dssIntents...)
 }
 
 func newNonConflictingKnownIntent() scd.OperationalIntent {
@@ -467,4 +467,14 @@ func TestCreateOperationalIntentDoesNotNotifyItsOwnSubscription(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Empty(t, recorder.Notifications)
+}
+
+func TestCreateOperationalIntentConflictsWhenPeerReturnsError(t *testing.T) {
+	service := newServiceWithPeer(t, peertest.UnreachablePeer{}, newPeerIntent())
+
+	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParams())
+
+	require.ErrorIs(t, err, scd.ErrConflict)
+	require.Zero(t, intent)
+	requireNothingStored(t, service)
 }
