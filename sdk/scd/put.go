@@ -56,12 +56,27 @@ func (s *Service) put(
 	if hasKnownConflict(intent, params, knownIntents) {
 		return OperationalIntent{}, ErrRejected
 	}
-
-	putParams := s.createPutRequestParams(params, keyFromIntents(knownIntents))
-
-	if putParams.State == scdussv1.OperationalIntentState_Activated && ovn == nil {
+	if params.State == scdussv1.OperationalIntentState_Activated && ovn == nil {
 		return OperationalIntent{}, ErrConflict
 	}
+
+	result, err := s.submitOperationalIntent(ctx, intent, ovn, params, knownIntents)
+
+	if err != nil {
+		return OperationalIntent{}, err
+	}
+	s.notifyPeers(ctx, result)
+	return s.saveOperationalIntent(params, result), nil
+}
+
+func (s *Service) submitOperationalIntent(
+	ctx context.Context,
+	intent OperationalIntent,
+	ovn *scdussv1.EntityOVN,
+	params IntentParams,
+	knownIntents []OperationalIntent,
+) (scdussv1.ChangeOperationalIntentReferenceResponse, error) {
+	putParams := s.createPutRequestParams(params, keyFromIntents(knownIntents))
 
 	// TODO(gap): What happens if the DSS call results in a non-conflict error?
 	result, err := s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
@@ -69,46 +84,58 @@ func (s *Service) put(
 		// TODO(gap): We only fetch the first missing intent - the rest are ignored
 		missing := (*conflict.MissingOperationalIntents)[0]
 		details, err := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
+		// TODO(gap): We assume any peer error is a conflict
 		if err != nil {
-			return OperationalIntent{}, ErrConflict
+			return scdussv1.ChangeOperationalIntentReferenceResponse{}, ErrConflict
 		}
 		peerIntent := intentFromDetails(details)
 		if isBlockingUs(peerIntent, intent, params) {
-			return OperationalIntent{}, ErrConflict
+			return scdussv1.ChangeOperationalIntentReferenceResponse{}, ErrConflict
 		}
 		putParams.Key = new(append(*putParams.Key, peerIntent.OVN))
+		// TODO(gap): We assume the DSS won't return a subsequent conflict
 		result, _ = s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	}
+	return result, nil
+}
 
-	otherSubscribers := util.Remove(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) bool {
-		return subscriber.UssBaseUrl == scdussv1.SubscriptionUssBaseURL(s.USSBaseURL)
+// TODO(gap): Only the first peer subscriber is notified - the rest are ignored
+func (s *Service) notifyPeers(
+	ctx context.Context,
+	result scdussv1.ChangeOperationalIntentReferenceResponse,
+) {
+	ownURL := scdussv1.SubscriptionUssBaseURL(s.USSBaseURL)
+	index := slices.IndexFunc(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) bool {
+		return subscriber.UssBaseUrl != ownURL
 	})
 
-	// TODO(gap): Only the first subscriber is notified - the rest are ignored
-	if len(otherSubscribers) > 0 {
-		s.notifyPeer(ctx, otherSubscribers[0], result, params)
+	if index >= 0 {
+		s.notifyPeer(ctx, result.Subscribers[index], result)
 	}
-
-	return s.saveOperationalIntent(params, result), nil
 }
 
 func (s *Service) notifyPeer(
 	ctx context.Context,
 	subscriber scdussv1.SubscriberToNotify,
 	result scdussv1.ChangeOperationalIntentReferenceResponse,
-	params IntentParams,
 ) {
+	// TODO(gap): No error handling
 	s.Peer.NotifyOperationalIntentDetails(
 		ctx,
 		subscriber.UssBaseUrl,
 		// TODO(gap): Missing 'Subscriptions' attribute
 		scdussv1.PutOperationalIntentDetailsParameters{
 			OperationalIntentId: result.OperationalIntentReference.Id,
+			// TODO(gap): Missing 'Details' attribute
 			OperationalIntent: &scdussv1.OperationalIntent{
-				Reference: result.OperationalIntentReference,
-				Details: scdussv1.OperationalIntentDetails{
-					Volumes:  &params.Volumes,
-					Priority: &params.Priority,
+				Reference: scdussv1.OperationalIntentReference{
+					// TODO(gap): Missing 'Version', 'Ovn', 'UssBaseUrl', and 'SubscriptionId' attributes
+					Id:              result.OperationalIntentReference.Id,
+					Manager:         result.OperationalIntentReference.Manager,
+					UssAvailability: result.OperationalIntentReference.UssAvailability,
+					State:           result.OperationalIntentReference.State,
+					TimeStart:       result.OperationalIntentReference.TimeStart,
+					TimeEnd:         result.OperationalIntentReference.TimeEnd,
 				},
 			},
 		})
@@ -119,6 +146,10 @@ func isBlockingUs(
 	intent OperationalIntent,
 	params IntentParams,
 ) bool {
+	if other.EntityID == intent.EntityID {
+		return false
+	}
+	// TODO(gap): This is the only schema validation we do against peer intents
 	if other.State == "Flying" {
 		return true
 	}
@@ -190,9 +221,9 @@ func hasKnownConflict(
 	params IntentParams,
 	knownIntents []OperationalIntent,
 ) bool {
-	return slices.IndexFunc(knownIntents, func(other OperationalIntent) bool {
-		return other.EntityID != intent.EntityID && isBlockingUs(other, intent, params)
-	}) >= 0
+	return slices.ContainsFunc(knownIntents, func(other OperationalIntent) bool {
+		return isBlockingUs(other, intent, params)
+	})
 }
 
 // TODO(gap): Dereferences without nil checks

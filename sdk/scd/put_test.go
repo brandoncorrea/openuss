@@ -454,9 +454,18 @@ func TestCreateOperationalIntentNotifiesPeerSubscriber(t *testing.T) {
 	require.EqualValues(t, peerUSSBaseURL, notified.USSBaseURL)
 	require.Equal(t, intent.EntityID, notified.Details.OperationalIntentId)
 	require.NotNil(t, notified.Details.OperationalIntent)
-	require.Equal(t, dssIntent.Reference, notified.Details.OperationalIntent.Reference)
-	require.Equal(t, params.Volumes, *notified.Details.OperationalIntent.Details.Volumes)
-	require.Equal(t, params.Priority, *notified.Details.OperationalIntent.Details.Priority)
+	require.Equal(t, dssIntent.Reference.Id, notified.Details.OperationalIntent.Reference.Id)
+	require.Equal(t, dssIntent.Reference.Manager, notified.Details.OperationalIntent.Reference.Manager)
+	require.Equal(t, dssIntent.Reference.UssAvailability, notified.Details.OperationalIntent.Reference.UssAvailability)
+	require.Equal(t, dssIntent.Reference.State, notified.Details.OperationalIntent.Reference.State)
+	require.Equal(t, dssIntent.Reference.TimeStart, notified.Details.OperationalIntent.Reference.TimeStart)
+	require.Equal(t, dssIntent.Reference.TimeEnd, notified.Details.OperationalIntent.Reference.TimeEnd)
+	require.Zero(t, notified.Details.OperationalIntent.Reference.Version)
+	require.Zero(t, notified.Details.OperationalIntent.Reference.Ovn)
+	require.Zero(t, notified.Details.OperationalIntent.Reference.UssBaseUrl)
+	require.Zero(t, notified.Details.OperationalIntent.Reference.SubscriptionId)
+	require.Zero(t, notified.Details.OperationalIntent.Details)
+	require.Zero(t, notified.Details.Subscriptions)
 }
 
 func TestCreateOperationalIntentDoesNotNotifyItsOwnSubscription(t *testing.T) {
