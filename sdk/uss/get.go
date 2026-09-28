@@ -26,21 +26,22 @@ func toWire(intent scd.OperationalIntent) scdussv1.GetOperationalIntentDetailsRe
 				Version:         intent.Version,
 				State:           intent.State,
 				Ovn:             &intent.OVN,
-				TimeStart: scdussv1.Time{
-					Value:  intent.TimeStart.Format(time.RFC3339Nano),
-					Format: "RFC3339",
-				},
-				TimeEnd: scdussv1.Time{
-					Value:  intent.TimeEnd.Format(time.RFC3339Nano),
-					Format: "RFC3339",
-				},
-				UssBaseUrl:     intent.USSBaseURL,
-				SubscriptionId: intent.SubscriptionID,
+				TimeStart:       toSCDTime(intent.TimeStart),
+				TimeEnd:         toSCDTime(intent.TimeEnd),
+				UssBaseUrl:      intent.USSBaseURL,
+				SubscriptionId:  intent.SubscriptionID,
 			},
 			Details: scdussv1.OperationalIntentDetails{
 				Volumes:  &intent.Volumes,
 				Priority: &intent.Priority,
 			},
 		},
+	}
+}
+
+func toSCDTime(value time.Time) scdussv1.Time {
+	return scdussv1.Time{
+		Value:  value.Format(time.RFC3339Nano),
+		Format: "RFC3339",
 	}
 }
