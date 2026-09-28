@@ -133,9 +133,9 @@ func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flig
 
 	client := utmclient.New(tokens, nil)
 	dssClient := newDSSClient(client)
-	peer := peer.New(client)
+	peerClient := peer.New(client)
 	flights := flightplanning.NewInMemoryFlightStore()
-	service := scd.New(dssClient, peer, intents, ussBaseURL)
+	service := scd.New(dssClient, peerClient, intents, ussBaseURL)
 	return flightplanning.New(service, flights), nil
 }
 
