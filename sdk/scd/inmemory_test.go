@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetUnknownIntentIsNotFound(t *testing.T) {
+func TestIntentStoreGetUnknownIntentIsNotFound(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 
 	stored, err := store.Get(t.Context(), scdtest.NewEntityID())
@@ -17,7 +17,7 @@ func TestGetUnknownIntentIsNotFound(t *testing.T) {
 	require.Zero(t, stored)
 }
 
-func TestGetReturnsUpsertedIntent(t *testing.T) {
+func TestIntentStoreGetReturnsUpsertedIntent(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 	intent := newIntent()
 	require.NoError(t, store.Upsert(t.Context(), intent))
@@ -28,7 +28,7 @@ func TestGetReturnsUpsertedIntent(t *testing.T) {
 	require.Equal(t, intent, stored)
 }
 
-func TestDeleteRemovesIntent(t *testing.T) {
+func TestIntentStoreDeleteRemovesIntent(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 	intent := newIntent()
 	require.NoError(t, store.Upsert(t.Context(), intent))
@@ -44,7 +44,7 @@ func TestDeleteRemovesIntent(t *testing.T) {
 	require.Empty(t, intents)
 }
 
-func TestListReturnsEveryIntent(t *testing.T) {
+func TestIntentStoreListReturnsEveryIntent(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 	first, second := newIntent(), newIntent()
 	require.NoError(t, store.Upsert(t.Context(), first))
@@ -56,7 +56,7 @@ func TestListReturnsEveryIntent(t *testing.T) {
 	require.ElementsMatch(t, []scd.OperationalIntent{first, second}, intents)
 }
 
-func TestDeleteUnknownIntentSucceeds(t *testing.T) {
+func TestIntentStoreDeleteUnknownIntentSucceeds(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 
 	require.NoError(t, store.Delete(t.Context(), scdtest.NewEntityID()))

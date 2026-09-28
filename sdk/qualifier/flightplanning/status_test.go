@@ -8,10 +8,10 @@ import (
 	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 )
 
-func TestGetStatus(t *testing.T) {
+func TestGetStatusReportsReady(t *testing.T) {
 	response := httptest.NewRecorder()
-	director := &flightplanning.Handler{}
-	director.GetStatus(response, nil)
+	handler := &flightplanning.Handler{}
+	handler.GetStatus(response, nil)
 	wiretest.RequireJSON(t, response, flightplanning.StatusResponse{
 		Status: flightplanning.ServiceStatusReady,
 	})

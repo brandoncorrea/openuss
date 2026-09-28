@@ -9,19 +9,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetFlightOnEmptyDB(t *testing.T) {
+func TestFlightStoreGetUnknownFlightIsNil(t *testing.T) {
 	store := flightplanning.NewInMemoryFlightStore()
 	require.Nil(t, store.Get(uuid.New()))
 }
 
-func TestDeleteFlightOnEmptyDB(t *testing.T) {
+func TestFlightStoreDeleteUnknownFlightSucceeds(t *testing.T) {
 	store := flightplanning.NewInMemoryFlightStore()
 	require.NotPanics(t, func() {
 		store.Delete(uuid.New())
 	})
 }
 
-func TestGetSavedFlight(t *testing.T) {
+func TestFlightStoreGetReturnsUpsertedFlight(t *testing.T) {
 	store := flightplanning.NewInMemoryFlightStore()
 	flight := flightplanning.FlightPlanRecord{
 		ID: uuid.New(),
@@ -30,7 +30,7 @@ func TestGetSavedFlight(t *testing.T) {
 	require.Equal(t, flight, *(store.Get(flight.ID)))
 }
 
-func TestDeleteSavedFlight(t *testing.T) {
+func TestFlightStoreDeleteRemovesFlight(t *testing.T) {
 	store := flightplanning.NewInMemoryFlightStore()
 	flight := flightplanning.FlightPlanRecord{
 		ID: uuid.New(),
@@ -41,21 +41,20 @@ func TestDeleteSavedFlight(t *testing.T) {
 	require.Nil(t, store.Get(flight.ID))
 }
 
-func TestListFlights(t *testing.T) {
+func TestFlightStoreListIsEmptyWhenNothingIsSaved(t *testing.T) {
 	store := flightplanning.NewInMemoryFlightStore()
+
 	require.Empty(t, store.List())
+}
 
-	flight1 := flightplanning.FlightPlanRecord{
-		ID:       uuid.New(),
-		EntityID: scdtest.NewEntityID(),
-	}
-	store.Upsert(flight1)
-	require.Equal(t, []flightplanning.FlightPlanRecord{flight1}, store.List())
+func TestFlightStoreListReturnsEveryFlight(t *testing.T) {
+	store := flightplanning.NewInMemoryFlightStore()
+	first := flightplanning.FlightPlanRecord{ID: uuid.New(), EntityID: scdtest.NewEntityID()}
+	second := flightplanning.FlightPlanRecord{ID: uuid.New(), EntityID: scdtest.NewEntityID()}
+	require.NoError(t, store.Upsert(first))
+	require.NoError(t, store.Upsert(second))
 
-	flight2 := flightplanning.FlightPlanRecord{
-		ID:       uuid.New(),
-		EntityID: scdtest.NewEntityID(),
-	}
-	store.Upsert(flight2)
-	require.ElementsMatch(t, []flightplanning.FlightPlanRecord{flight1, flight2}, store.List())
+	flights := store.List()
+
+	require.ElementsMatch(t, []flightplanning.FlightPlanRecord{first, second}, flights)
 }

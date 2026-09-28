@@ -8,7 +8,7 @@ import (
 	"bwawan.com/openuss/sdk/qualifier/versioning"
 )
 
-func TestGetVersion(t *testing.T) {
+func TestGetVersionReportsSystemIdentityAndVersion(t *testing.T) {
 	response := httptest.NewRecorder()
 	versioning.New().GetVersion(response, nil)
 	wiretest.RequireJSON(t, response, versioning.GetVersionResponse{

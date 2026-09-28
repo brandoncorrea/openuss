@@ -8,10 +8,10 @@ import (
 	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 )
 
-func TestClearAreaRequest(t *testing.T) {
+func TestClearAreaRequestsReportSuccess(t *testing.T) {
 	response := httptest.NewRecorder()
-	director := &flightplanning.Handler{}
-	director.ClearAreaRequests(response, nil)
+	handler := &flightplanning.Handler{}
+	handler.ClearAreaRequests(response, nil)
 	wiretest.RequireJSON(t, response, flightplanning.ClearAreaResponse{
 		Outcome: flightplanning.ClearAreaOutcome{
 			Success: true,

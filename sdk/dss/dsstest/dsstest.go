@@ -72,15 +72,7 @@ func dssHandlerFor(registered []scdussv1.OperationalIntent) http.HandlerFunc {
 			return slices.Contains(key, *reference.Ovn)
 		})
 
-		if len(missing) > 0 {
-			masked := util.Map(missing, func(reference scdussv1.OperationalIntentReference) scdussv1.OperationalIntentReference {
-				reference.Ovn = new(scdussv1.EntityOVN("blah"))
-				return reference
-			})
-			api.WriteJSON(w, http.StatusConflict, scdussv1.AirspaceConflictResponse{
-				MissingOperationalIntents: &masked,
-			})
-		} else {
+		if len(missing) == 0 {
 			api.WriteJSON(w, http.StatusOK, scdussv1.ChangeOperationalIntentReferenceResponse{
 				OperationalIntentReference: scdussv1.OperationalIntentReference{
 					Id:         scdussv1.EntityID(dssEntityID(r.RequestURI)),
@@ -88,7 +80,16 @@ func dssHandlerFor(registered []scdussv1.OperationalIntent) http.HandlerFunc {
 					UssBaseUrl: putParams.UssBaseUrl,
 				},
 			})
+			return
 		}
+
+		masked := util.Map(missing, func(reference scdussv1.OperationalIntentReference) scdussv1.OperationalIntentReference {
+			reference.Ovn = new(scdussv1.EntityOVN("blah"))
+			return reference
+		})
+		api.WriteJSON(w, http.StatusConflict, scdussv1.AirspaceConflictResponse{
+			MissingOperationalIntents: &masked,
+		})
 	}
 }
 

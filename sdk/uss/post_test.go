@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNotifyOperationalIntent(t *testing.T) {
+func TestNotifyOperationalIntentRespondsWithNoContent(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/", nil)
 	handler := newHandler()

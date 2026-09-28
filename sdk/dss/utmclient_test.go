@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateIntentRespondsWithChangeResult(t *testing.T) {
+func TestPutIntentReturnsTheChangeResult(t *testing.T) {
 	response := scdussv1.ChangeOperationalIntentReferenceResponse{}
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, http.StatusOK, response)
@@ -25,7 +25,7 @@ func TestCreateIntentRespondsWithChangeResult(t *testing.T) {
 	require.Equal(t, response, result)
 }
 
-func TestCreateIntentRequestParameters(t *testing.T) {
+func TestPutNewIntentSendsAnAuthorizedPutWithoutOVN(t *testing.T) {
 	entityID := scdtest.NewEntityID()
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPut, r.Method)
@@ -40,7 +40,7 @@ func TestCreateIntentRequestParameters(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestUpdatesIntentWithSuppliedOVN(t *testing.T) {
+func TestPutExistingIntentAppendsItsOVNToThePath(t *testing.T) {
 	entityID := scdtest.NewEntityID()
 	ovn := scdussv1.EntityOVN(uuid.New().String())
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +53,7 @@ func TestUpdatesIntentWithSuppliedOVN(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCreateIntentProducesErrorOnRequest(t *testing.T) {
+func TestPutIntentFailsWithoutContext(t *testing.T) {
 	dssClient := dsstest.NewDSS(t, wiretest.AssertNotCalledHandler(t))
 	reference := scdussv1.PutOperationalIntentReferenceParameters{}
 	result, err := dssClient.PutOperationalIntentReference(nil, scdtest.NewEntityID(), nil, reference)
@@ -61,7 +61,7 @@ func TestCreateIntentProducesErrorOnRequest(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestCreateIntentRespondsWithBadJSON(t *testing.T) {
+func TestPutIntentFailsOnMalformedResponse(t *testing.T) {
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, http.StatusOK, "{")
 	})
@@ -71,7 +71,7 @@ func TestCreateIntentRespondsWithBadJSON(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestDeleteIntentRespondsWithChangeResult(t *testing.T) {
+func TestDeleteIntentReturnsTheChangeResult(t *testing.T) {
 	ovn := scdussv1.EntityOVN(uuid.New().String())
 	response := scdussv1.ChangeOperationalIntentReferenceResponse{}
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +82,7 @@ func TestDeleteIntentRespondsWithChangeResult(t *testing.T) {
 	require.Equal(t, response, result)
 }
 
-func TestDeleteIntentRequestParameters(t *testing.T) {
+func TestDeleteIntentSendsAnAuthorizedDeleteWithOVN(t *testing.T) {
 	entityID := string(scdtest.NewEntityID())
 	ovn := uuid.New().String()
 	dssClient := dsstest.NewDSS(t, func(w http.ResponseWriter, r *http.Request) {

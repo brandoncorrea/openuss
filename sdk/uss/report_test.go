@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMakeUSSReport(t *testing.T) {
+func TestMakeUSSReportEchoesTheReportWithAnID(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	report := scdussv1.ErrorReport{
@@ -22,7 +22,8 @@ func TestMakeUSSReport(t *testing.T) {
 		},
 	}
 
-	bytes, _ := json.Marshal(report)
+	bytes, err := json.Marshal(report)
+	require.NoError(t, err)
 
 	request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(bytes)))
 	handler := newHandler()

@@ -43,8 +43,12 @@ func TestCreateOperationalIntentStoresTheDSSReference(t *testing.T) {
 	require.Equal(t, reference.SubscriptionId, intent.SubscriptionID)
 	require.Equal(t, params.Volumes, intent.Volumes)
 
-	timeStart, _ := time.Parse(time.RFC3339Nano, reference.TimeStart.Value)
-	timeEnd, _ := time.Parse(time.RFC3339Nano, reference.TimeEnd.Value)
+	timeStart, err := time.Parse(time.RFC3339Nano, reference.TimeStart.Value)
+	require.NoError(t, err)
+
+	timeEnd, err := time.Parse(time.RFC3339Nano, reference.TimeEnd.Value)
+	require.NoError(t, err)
+
 	require.Equal(t, timeStart, intent.TimeStart)
 	require.Equal(t, timeEnd, intent.TimeEnd)
 

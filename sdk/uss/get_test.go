@@ -19,7 +19,7 @@ func newHandler() *uss.Handler {
 	return uss.New(scd.NewInMemoryIntentStore())
 }
 
-func TestGetOperationalIntentSuccess(t *testing.T) {
+func TestGetOperationalIntentReturnsTheStoredIntent(t *testing.T) {
 	entityID := uuid.New().String()
 	intent := scd.OperationalIntent{
 		EntityID:        scdussv1.EntityID(entityID),

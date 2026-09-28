@@ -58,7 +58,7 @@ func rejectWith(err error) scdtest.Stub {
 	}
 }
 
-func TestCreateFlightPlanSucceeds(t *testing.T) {
+func TestPutNewFlightPlanCreatesAnOperationalIntent(t *testing.T) {
 	flightID := uuid.New()
 	body := newFlightPlanBody()
 	coordination, created := scdtest.NewCreateStub()
@@ -80,7 +80,7 @@ func TestCreateFlightPlanSucceeds(t *testing.T) {
 		handler.Flights.List())
 }
 
-func TestUpdateFlightPlanSucceeds(t *testing.T) {
+func TestPutExistingFlightPlanUpdatesItsOperationalIntent(t *testing.T) {
 	flightID := uuid.New()
 	body := newFlightPlanBody()
 	existing := flightplanning.FlightPlanRecord{ID: flightID, EntityID: scdtest.NewEntityID()}
@@ -113,7 +113,7 @@ func TestUpdateFlightPlanSucceeds(t *testing.T) {
 	require.Equal(t, []flightplanning.FlightPlanRecord{existing}, handler.Flights.List())
 }
 
-func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
+func TestPutInUseFlightPlanActivatesIt(t *testing.T) {
 	flightID := uuid.New()
 	body := newFlightPlanBody()
 	body.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse
@@ -129,7 +129,7 @@ func TestUsageStateInUseActivatesFlightPlan(t *testing.T) {
 	require.Equal(t, scdussv1.OperationalIntentState_Activated, created.Params.State)
 }
 
-func TestUASStateOffNominalSubmitsNonconformingIntent(t *testing.T) {
+func TestPutOffNominalFlightPlanSubmitsNonconformingIntent(t *testing.T) {
 	flightID := uuid.New()
 	body := newFlightPlanBody()
 	body.FlightPlan.BasicInformation.UsageState = flightplanning.UsageStateInUse

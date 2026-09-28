@@ -75,7 +75,7 @@ func TestNewDummyOAuthMustHaveSubject(t *testing.T) {
 	require.ErrorContains(t, err, "auth: subject is required")
 }
 
-func TestNewDummyOAuth(t *testing.T) {
+func TestNewDummyOAuthKeepsEndpointAndSubjectWithDefaultClient(t *testing.T) {
 	dummy, err := auth.NewDummyOAuth("http://dummy/token", "foo_subject", nil)
 	require.NoError(t, err)
 	require.Equal(t, "foo_subject", dummy.Subject)
@@ -108,7 +108,7 @@ func TestTokenWithNoScopes(t *testing.T) {
 	require.ErrorContains(t, err, "auth: at least one scope is required")
 }
 
-func TestMissingAudienceAndScopes(t *testing.T) {
+func TestTokenReportsMissingAudienceBeforeMissingScopes(t *testing.T) {
 	token, err := newToken(t, "")
 	require.Equal(t, "", token)
 	require.ErrorContains(t, err, "auth: audience is required")
