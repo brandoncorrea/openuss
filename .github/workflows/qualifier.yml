@@ -16,6 +16,10 @@ jobs:
   qualifier:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    env:
+      QUALIFIER_OUTPUT: monitoring/monitoring/uss_qualifier/output
+
     steps:
       - name: Checkout OpenUSS
         uses: actions/checkout@v7
@@ -39,23 +43,28 @@ jobs:
         run: make -C openuss run
 
       - name: Run Qualifier
-        continue-on-error: true
         env:
           INTERUSS_MONITORING_DIR: ${{ github.workspace }}/monitoring
           QUALIFIER_STOP_FAST: "false"
         run: openuss/scripts/automated-tests.sh
 
       - name: Upload the Report
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: uss_qualifier-openuss_local
-          path: monitoring/monitoring/uss_qualifier/output
+          path: ${{ env.QUALIFIER_OUTPUT }}
           if-no-files-found: warn
 
-      - name: Stage the sequence view for Pages
-        run: mv monitoring/monitoring/uss_qualifier/output/openuss_local/sequence public/
+      - name: Stage the reports for Pages
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir public
+          cp -R "${{ env.QUALIFIER_OUTPUT }}/openuss_local/sequence/." public/
+          cp -R "${{ env.QUALIFIER_OUTPUT }}/openuss_local/scd" public/requirements
 
       - name: Upload the Pages artifact
+        if: ${{ !cancelled() }}
         uses: actions/upload-pages-artifact@v5
         with:
           path: public
@@ -68,9 +77,9 @@ jobs:
           make -C monitoring down-locally || true
 
   deploy:
-    name: Publish the sequence view
+    name: Publish the reports
     needs: qualifier
-    if: github.ref == 'refs/heads/master'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
 
     permissions:
