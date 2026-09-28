@@ -42,7 +42,6 @@ jobs:
         continue-on-error: true
         env:
           INTERUSS_MONITORING_DIR: ${{ github.workspace }}/monitoring
-          QUALIFIER_STOP_FAST: "false"
         run: openuss/scripts/automated-tests.sh
 
       - name: Upload the Report
