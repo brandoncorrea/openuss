@@ -1,4 +1,4 @@
-# Gap Analysis: InterUSS uss_qualifier coverage, as surfaced by OpenUSS
+# Gap Analysis
 
 OpenUSS is an ASTM F3548-21 USS built to do the minimum needed to pass the InterUSS automated test suite. It is deliberately degraded, and it is hardened only when the suite forces a change.
 
