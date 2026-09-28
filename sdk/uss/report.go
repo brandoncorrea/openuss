@@ -1,7 +1,18 @@
 package uss
 
-import "net/http"
+import (
+	"encoding/json/v2"
+	"net/http"
+	"uuid"
 
-func (*Handler) MakeUSSReport(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusCreated)
+	"bwawan.com/openuss/sdk/api"
+	"bwawan.com/openuss/sdk/api/scdussv1"
+)
+
+// TODO(gap): Simply echos the report with a random ID
+func (*Handler) MakeUSSReport(w http.ResponseWriter, r *http.Request) {
+	var report scdussv1.ErrorReport
+	json.UnmarshalRead(r.Body, &report)
+	report.ReportId = new(uuid.New().String())
+	api.WriteJSON(w, http.StatusCreated, report)
 }
