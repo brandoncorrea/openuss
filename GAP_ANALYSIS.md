@@ -26,29 +26,6 @@ Because it passes, every shortcut it takes shows something the suite does not ve
   3. Test data too narrow to exercise conflict geometry
   4. No negative testing against the USS under test
 
-## Test setup
-
-| Item | Value |
-|---|---|
-| Suite | [`suites.astm.utm.f3548_21`](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/suites/astm/utm/f3548_21.md) |
-| Configuration | Public [`baseline_a`](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/definitions/baseline_a.libsonnet) with OpenUSS added as a participant ([`openuss_local.jsonnet`](https://github.com/brandoncorrea/openuss/blob/master/test/config/utm_implementation_us/openuss_local.jsonnet)), mirroring [`utm_implementation_us/environments/local/test_1.jsonnet`](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/environments/local/test_1.jsonnet) |
-| Participants | [openuss](https://github.com/brandoncorrea/openuss/blob/master/test/config/utm_implementation_us/openuss.libsonnet) (flight planner, versioning; uses uss1's DSS), [uss1](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/participants/uss1.libsonnet) (uss1_core + uss1_dss), [uss2](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/participants/uss2.libsonnet) (uss2_core + uss2_dss), [mock_uss](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/participants/mock_uss.libsonnet) |
-| monitoring | [`interuss/monitoring`](https://github.com/interuss/monitoring) `main` |
-| Result | Validation passed. openuss: `NotFullyVerified` |
-| Reports | [Sequence view](https://brandoncorrea.github.io/openuss/) and [requirements](https://brandoncorrea.github.io/openuss/requirements/openuss.html), from the latest `master` run |
-
-**How this configuration shapes coverage:**
-
-- **OpenUSS takes every role.** Three flight planners and no combination selector mean OpenUSS
-  runs as tested USS, as control USS, and against itself.
-- **CMSA branches are skipped.** The baseline's `utm_auth` does not include
-  `utm.conformance_monitoring_sa`. That skips:
-  - the Nonconforming and Contingent cases
-  - telemetry
-  - every step after ["Declare Flight 2 non-conforming"](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/nominal_planning/conflict_equal_priority_not_permitted/conflict_equal_priority_not_permitted.md#declare-flight-2-non-conforming-test-step)
-- **Four DSS scenarios are skipped.** The constraint-reference DSS scenarios ([CRSimple](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/constraint_ref_simple.md) and [CRSynchronization](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/synchronization/constraint_ref_synchronization.md), once per DSS) need `utm.constraint_management`, which the baseline doesn't include. Together with [DatastoreAccess](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/datastore_access.md) ×2 and [PoolInfo](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/pool_info.md), these make up the 7 expected skipped actions.
-- **The flight intents are narrow.** Every non-invalid intent is one polygon volume, live from now until now+45 min. Every pair that must not conflict is separated horizontally.
-
 ## Findings
 
 Each finding states what the qualifier does and what OpenUSS does that still passes. Severity markers follow the scenario documentation: 🛑 High, ⚠️ Medium, ℹ️ Low.
@@ -216,8 +193,28 @@ Each finding states what the qualifier does and what OpenUSS does that still pas
   - Remote ID.
 
   OpenUSS implements none of these, and nothing in this configuration reveals that.
+- **CMSA branches are skipped.** The baseline's `utm_auth` does not include
+  `utm.conformance_monitoring_sa`. That skips:
+  - the Nonconforming and Contingent cases
+  - telemetry
+  - every step after ["Declare Flight 2 non-conforming"](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/nominal_planning/conflict_equal_priority_not_permitted/conflict_equal_priority_not_permitted.md#declare-flight-2-non-conforming-test-step)
+- **Four DSS scenarios are skipped.** The constraint-reference DSS scenarios ([CRSimple](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/constraint_ref_simple.md) and [CRSynchronization](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/synchronization/constraint_ref_synchronization.md), once per DSS) need `utm.constraint_management`, which the baseline doesn't include. Together with [DatastoreAccess](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/datastore_access.md) ×2 and [PoolInfo](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/dss/pool_info.md), these make up the 7 expected skipped actions.
 - **Requirements status.**
   - "Basic SCD" includes DSS requirements that a USS without its own DSS never exercises, even
     when listed as a user of another participant's DSS.
   - Combined with A2 and A3, a flight-planning-only USS is structurally limited to
     NotFullyVerified.
+
+## Test setup
+
+| Item | Value |
+|---|---|
+| Suite | [`suites.astm.utm.f3548_21`](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/suites/astm/utm/f3548_21.md) |
+| Configuration | Public [`baseline_a`](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/definitions/baseline_a.libsonnet) with OpenUSS added as a participant ([`openuss_local.jsonnet`](https://github.com/brandoncorrea/openuss/blob/master/test/config/utm_implementation_us/openuss_local.jsonnet)), mirroring [`utm_implementation_us/environments/local/test_1.jsonnet`](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/environments/local/test_1.jsonnet) |
+| Participants | [openuss](https://github.com/brandoncorrea/openuss/blob/master/test/config/utm_implementation_us/openuss.libsonnet) (flight planner, versioning; uses uss1's DSS), [uss1](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/participants/uss1.libsonnet) (uss1_core + uss1_dss), [uss2](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/participants/uss2.libsonnet) (uss2_core + uss2_dss), [mock_uss](https://github.com/interuss/monitoring/blob/main/monitoring/uss_qualifier/configurations/dev/utm_implementation_us/participants/mock_uss.libsonnet) |
+| monitoring | [`interuss/monitoring`](https://github.com/interuss/monitoring) `main` |
+| Result | Validation passed. openuss: `NotFullyVerified` |
+| Reports | [Sequence view](https://brandoncorrea.github.io/openuss/) and [requirements](https://brandoncorrea.github.io/openuss/requirements/openuss.html), from the latest `master` run |
+
+**OpenUSS takes every role.** Three flight planners and no combination selector mean OpenUSS
+runs as tested USS, as control USS, and against itself.
