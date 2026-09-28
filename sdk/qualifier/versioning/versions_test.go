@@ -1,6 +1,7 @@
 package versioning_test
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -10,9 +11,11 @@ import (
 
 func TestGetVersionReportsSystemIdentityAndVersion(t *testing.T) {
 	response := httptest.NewRecorder()
-	versioning.New().GetVersion(response, nil)
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.SetPathValue("system_identity", "foo")
+	versioning.New().GetVersion(response, request)
 	wiretest.RequireJSON(t, response, versioning.GetVersionResponse{
-		SystemIdentity: "astm.f3548.v21",
+		SystemIdentity: "foo",
 		SystemVersion:  "blah",
 	})
 }

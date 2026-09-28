@@ -13,8 +13,8 @@ func TestRoutes(t *testing.T) {
 	wiretest.RequireRouteRegistration(t, handler, []wiretest.RouteRegistration{
 		{
 			Method:  http.MethodGet,
-			Path:    "/versioning/versions/astm.f3548.v21",
-			Pattern: "GET /versioning/versions/astm.f3548.v21",
+			Path:    "/versioning/versions/FOO",
+			Pattern: "GET /versioning/versions/{system_identity}",
 			Handler: handler.GetVersion,
 		},
 	})

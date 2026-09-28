@@ -12,9 +12,9 @@ func New() *Handler {
 	return &Handler{}
 }
 
-func (*Handler) GetVersion(w http.ResponseWriter, _ *http.Request) {
+func (*Handler) GetVersion(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, http.StatusOK, GetVersionResponse{
-		SystemIdentity: "astm.f3548.v21",
+		SystemIdentity: r.PathValue("system_identity"),
 		// TODO(gap): The suite wants system_version to be a populated string, but doesn't enforce anything after that.
 		SystemVersion: "blah",
 	})
