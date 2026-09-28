@@ -84,21 +84,7 @@ func TestPutExistingFlightPlanUpdatesItsOperationalIntent(t *testing.T) {
 	flightID := uuid.New()
 	body := newFlightPlanBody()
 	existing := flightplanning.FlightPlanRecord{ID: flightID, EntityID: scdtest.NewEntityID()}
-	var receivedID scdussv1.EntityID
-	var received scd.IntentParams
-	coordination := scdtest.Stub{
-		UpdateFn: func(
-			_ context.Context,
-			id scdussv1.EntityID,
-			params scd.IntentParams,
-		) (scd.OperationalIntent, error) {
-			receivedID, received = id, params
-			return scd.OperationalIntent{
-				EntityID: id,
-				State:    params.State,
-			}, nil
-		},
-	}
+	coordination, updated := scdtest.NewUpdateStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 	handler.Flights.Upsert(existing)
 
@@ -108,8 +94,8 @@ func TestPutExistingFlightPlanUpdatesItsOperationalIntent(t *testing.T) {
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 		FlightPlanStatus: flightplanning.FlightPlanStatusPlanned,
 	})
-	require.Equal(t, existing.EntityID, receivedID)
-	require.Equal(t, body.FlightPlan.BasicInformation.Area, received.Volumes)
+	require.Equal(t, existing.EntityID, updated.EntityID)
+	require.Equal(t, body.FlightPlan.BasicInformation.Area, updated.Params.Volumes)
 	require.Equal(t, []flightplanning.FlightPlanRecord{existing}, handler.Flights.List())
 }
 

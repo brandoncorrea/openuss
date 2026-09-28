@@ -1,13 +1,11 @@
 package flightplanning_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"uuid"
 
-	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/internal/wiretest"
 	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/scdtest"
@@ -30,13 +28,7 @@ func newSavedRecord(handler *flightplanning.Handler) flightplanning.FlightPlanRe
 }
 
 func TestDeleteFlightPlanSucceeds(t *testing.T) {
-	var deleted scdussv1.EntityID
-	coordination := scdtest.Stub{
-		DeleteFn: func(_ context.Context, id scdussv1.EntityID) error {
-			deleted = id
-			return nil
-		},
-	}
+	coordination, deleted := scdtest.NewDeleteStub()
 	handler := flightplanning.New(coordination, flightplanning.NewInMemoryFlightStore())
 	record := newSavedRecord(handler)
 
@@ -47,6 +39,6 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 		FlightPlanStatus: flightplanning.FlightPlanStatusClosed,
 		PlanningResult:   flightplanning.PlanningActivityResultCompleted,
 	})
-	require.Equal(t, record.EntityID, deleted)
+	require.Equal(t, record.EntityID, deleted.EntityID)
 	require.Nil(t, handler.Flights.Get(record.ID))
 }
