@@ -6,6 +6,7 @@ import (
 	"uuid"
 )
 
+// TODO(gap): Not safe for concurrent use
 type InMemoryFlightStore struct {
 	flights map[uuid.UUID]FlightPlanRecord
 }

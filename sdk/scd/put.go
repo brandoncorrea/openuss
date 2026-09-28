@@ -27,7 +27,8 @@ func (s *Service) UpdateOperationalIntent(
 	id scdussv1.EntityID,
 	params IntentParams,
 ) (OperationalIntent, error) {
-	// TODO: Missing context; no error handling
+	// TODO: Missing context
+	// TODO(gap): No error handling
 	existing, _ := s.Intents.Get(nil, id)
 	updated, err := s.put(ctx, existing, new(existing.OVN), params)
 	if err != nil {
@@ -49,7 +50,8 @@ func (s *Service) put(
 		return OperationalIntent{}, ErrRejected
 	}
 
-	// TODO: Missing context; no error handling
+	// TODO: Missing context
+	// TODO(gap): No error handling
 	// TODO(gap): This includes our own intent on Update
 	knownIntents, _ := s.Intents.List(nil)
 
@@ -191,10 +193,12 @@ func keyFromIntents(intents []OperationalIntent) scdussv1.Key {
 	})
 }
 
+// TODO(gap): Nothing validates the DSS response
 func (s *Service) saveOperationalIntent(
 	params IntentParams,
 	result scdussv1.ChangeOperationalIntentReferenceResponse,
 ) OperationalIntent {
+	// TODO(gap): Unparseable times are zero valued
 	timeStart, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeStart.Value)
 	timeEnd, _ := time.Parse(time.RFC3339Nano, result.OperationalIntentReference.TimeEnd.Value)
 	intent := OperationalIntent{
@@ -204,14 +208,16 @@ func (s *Service) saveOperationalIntent(
 		Version:         result.OperationalIntentReference.Version,
 		Priority:        params.Priority,
 		State:           result.OperationalIntentReference.State,
-		OVN:             *result.OperationalIntentReference.Ovn,
-		TimeStart:       timeStart,
-		TimeEnd:         timeEnd,
-		USSBaseURL:      result.OperationalIntentReference.UssBaseUrl,
-		SubscriptionID:  result.OperationalIntentReference.SubscriptionId,
-		Volumes:         params.Volumes,
+		// TODO(gap): Missing OVN panics
+		OVN:            *result.OperationalIntentReference.Ovn,
+		TimeStart:      timeStart,
+		TimeEnd:        timeEnd,
+		USSBaseURL:     result.OperationalIntentReference.UssBaseUrl,
+		SubscriptionID: result.OperationalIntentReference.SubscriptionId,
+		Volumes:        params.Volumes,
 	}
-	// TODO: Missing context; no error handling
+	// TODO: Missing context
+	// TODO(gap): No error handling
 	s.Intents.Upsert(nil, intent)
 	return intent
 }

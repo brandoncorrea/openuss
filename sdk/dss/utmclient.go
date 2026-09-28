@@ -27,6 +27,7 @@ type AirspaceConflictError struct {
 }
 
 func (e AirspaceConflictError) Error() string {
+	// TODO(gap): Dereferences without nil checks
 	return *e.Message
 }
 
@@ -48,10 +49,12 @@ func (u *UTMClient) PutOperationalIntentReference(
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}
+	// TODO(gap): Every status other than 409, including 4xx and 5xx, is decoded as a success
 	if response.StatusCode != http.StatusConflict {
 		return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
 	}
 
+	// TODO(gap): What happens if the conflict body is malformed?
 	conflict, _ := util.UnmarshalType[scdussv1.AirspaceConflictResponse](response.Body)
 	return scdussv1.ChangeOperationalIntentReferenceResponse{}, NewAirspaceConflictError(conflict)
 }
@@ -66,6 +69,7 @@ func (u *UTMClient) DeleteOperationalIntentReference(
 	if err != nil {
 		return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 	}
+	// TODO(gap): The status code is never checked
 	return util.UnmarshalType[scdussv1.ChangeOperationalIntentReferenceResponse](response.Body)
 }
 

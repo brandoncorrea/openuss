@@ -26,6 +26,7 @@ func (p *UTMClient) GetOperationalIntentDetails(
 	if err != nil {
 		return scdussv1.GetOperationalIntentDetailsResponse{}, err
 	}
+	// TODO(gap): The status code is never checked; an error body is decoded as details
 	return util.UnmarshalType[scdussv1.GetOperationalIntentDetailsResponse](response.Body)
 }
 

@@ -18,6 +18,7 @@ func (h *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &body)
 
+	// TODO(gap): execution_style is ignored; every request is treated as IfAllowed
 	id := uuid.MustParse(r.PathValue("flight_plan_id"))
 	result := h.putOrRejectFlight(r.Context(), id, body.FlightPlan)
 	api.WriteJSON(w, http.StatusOK, result)
@@ -39,6 +40,7 @@ func (h *Handler) putOrRejectFlight(
 		return planningResponse(PlanningActivityResultRejected, intent)
 	}
 
+	// TODO(gap): No error handling
 	h.Flights.Upsert(FlightPlanRecord{
 		ID:       flightID,
 		EntityID: intent.EntityID,
@@ -74,6 +76,7 @@ func planningResponse(result PlanningActivityResult, intent scd.OperationalInten
 }
 
 // TODO(gap): A Closed UsageState is submitted as a live intent instead of ending it
+// TODO(gap): A Contingent UASState is ignored; no intent is ever Contingent
 func flightToIntentState(plan FlightPlan) scdussv1.OperationalIntentState {
 	// TODO(gap): An intent is reported Nonconforming even when it isn't Activated
 	if plan.BasicInformation.UASState == UASStateOffNominal {

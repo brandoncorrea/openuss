@@ -7,7 +7,7 @@ import (
 )
 
 func (*Handler) GetStatus(w http.ResponseWriter, _ *http.Request) {
-	// TODO: Probably need to actually check a "Ready" state
+	// TODO(gap): Always reports Ready
 	api.WriteJSON(w, http.StatusOK, StatusResponse{
 		Status: ServiceStatusReady,
 	})

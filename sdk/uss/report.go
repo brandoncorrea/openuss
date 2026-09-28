@@ -12,6 +12,7 @@ import (
 // TODO(gap): Simply echos the report with a random ID
 func (*Handler) MakeUSSReport(w http.ResponseWriter, r *http.Request) {
 	var report scdussv1.ErrorReport
+	// TODO(gap): What happens if malformed JSON is sent?
 	json.UnmarshalRead(r.Body, &report)
 	report.ReportId = new(uuid.New().String())
 	api.WriteJSON(w, http.StatusCreated, report)

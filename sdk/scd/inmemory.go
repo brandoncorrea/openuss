@@ -8,6 +8,7 @@ import (
 	"bwawan.com/openuss/sdk/api/scdussv1"
 )
 
+// TODO(gap): Not safe for concurrent use
 type InMemoryIntentStore struct {
 	intents map[scdussv1.EntityID]OperationalIntent
 }
