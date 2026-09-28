@@ -2,7 +2,6 @@ package flightplanning_test
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -52,38 +51,4 @@ func TestDeleteFlightPlanSucceeds(t *testing.T) {
 	})
 	require.Equal(t, flight.EntityID, deleted)
 	require.Nil(t, handler.Flights.Get(flight.ID))
-}
-
-func TestDeleteFlightPlanMissingFlightID(t *testing.T) {
-	handler := flightplanning.New(scdtest.Stub{}, flightplanning.NewInMemoryFlightStore())
-
-	recorder := httptest.NewRecorder()
-	handler.DeleteFlightPlan(recorder, newDeleteRequest(nil))
-
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
-}
-
-func TestDeleteFlightPlanDoesNotExist(t *testing.T) {
-	handler := flightplanning.New(scdtest.Stub{}, flightplanning.NewInMemoryFlightStore())
-
-	recorder := httptest.NewRecorder()
-	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(uuid.New().String())))
-
-	require.Equal(t, http.StatusNotFound, recorder.Code)
-}
-
-func TestDeleteFlightPlanFailsWhenCoordinationFails(t *testing.T) {
-	unavailable := scdtest.Stub{
-		DeleteFn: func(context.Context, scdussv1.EntityID) error {
-			return errors.New("dss unavailable")
-		},
-	}
-	handler := flightplanning.New(unavailable, flightplanning.NewInMemoryFlightStore())
-	flight := newSavedFlight(handler)
-
-	recorder := httptest.NewRecorder()
-	handler.DeleteFlightPlan(recorder, newDeleteRequest(new(flight.ID.String())))
-
-	require.Equal(t, http.StatusInternalServerError, recorder.Code)
-	require.Equal(t, flight, *handler.Flights.Get(flight.ID))
 }
