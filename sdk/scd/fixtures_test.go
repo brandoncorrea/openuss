@@ -27,7 +27,9 @@ func sharedCorner() scdussv1.LatLngPoint {
 }
 
 func distantCorner() scdussv1.LatLngPoint {
-	return scdussv1.LatLngPoint{Lng: -80.5, Lat: 37.2}
+	corner := sharedCorner()
+	corner.Lng += 0.1
+	return corner
 }
 
 func newIntentParams() scd.IntentParams {
