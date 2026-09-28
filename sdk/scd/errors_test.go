@@ -16,7 +16,7 @@ func TestErrRejected(t *testing.T) {
 }
 
 func TestErrConflict(t *testing.T) {
-	message := scd.ErrRejected.Error() + ": conflicts with a higher-priority operational intent"
+	message := scd.ErrRejected.Error() + ": conflict"
 	require.EqualError(t, scd.ErrConflict, message)
 	require.ErrorIs(t, scd.ErrConflict, scd.ErrRejected)
 }
