@@ -19,4 +19,12 @@ func TestRoutes(t *testing.T) {
 			Handler: handler.GetOperationalIntent,
 		},
 	})
+	wiretest.RequireRouteRegistration(t, handler, []wiretest.RouteRegistration{
+		{
+			Method:  http.MethodPost,
+			Path:    "/uss/v1/operational_intents",
+			Pattern: "POST /uss/v1/operational_intents",
+			Handler: handler.NotifyOperationalIntent,
+		},
+	})
 }
