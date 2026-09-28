@@ -13,7 +13,7 @@ import (
 
 const subscriberURL scdussv1.SubscriptionUssBaseURL = "http://uss.example.com"
 
-func putIntent(t *testing.T, authority *dss.InMemoryDSS) scdussv1.OperationalIntentReference {
+func putIntent(t *testing.T, dssClient *dss.InMemoryDSS) scdussv1.OperationalIntentReference {
 	t.Helper()
 	id := scdtest.NewEntityID()
 	params := scdussv1.PutOperationalIntentReferenceParameters{
@@ -22,13 +22,13 @@ func putIntent(t *testing.T, authority *dss.InMemoryDSS) scdussv1.OperationalInt
 			UssBaseUrl: subscriberURL,
 		},
 	}
-	result, err := authority.PutOperationalIntentReference(t.Context(), id, nil, params)
+	result, err := dssClient.PutOperationalIntentReference(t.Context(), id, nil, params)
 	require.NoError(t, err)
 	return result.OperationalIntentReference
 }
 
 func TestInMemoryDSSCreatesAnOperationalIntent(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
+	dssClient := dss.NewInMemoryDSS()
 	id := scdtest.NewEntityID()
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		State:      scdussv1.OperationalIntentState_Accepted,
@@ -50,7 +50,7 @@ func TestInMemoryDSSCreatesAnOperationalIntent(t *testing.T) {
 		},
 	}
 
-	intent, err := authority.PutOperationalIntentReference(t.Context(), id, nil, params)
+	intent, err := dssClient.PutOperationalIntentReference(t.Context(), id, nil, params)
 	require.NoError(t, err)
 
 	reference := intent.OperationalIntentReference
@@ -67,11 +67,11 @@ func TestInMemoryDSSCreatesAnOperationalIntent(t *testing.T) {
 	require.EqualValues(t, "the-uss-base-url", reference.UssBaseUrl)
 	require.NotZero(t, reference.SubscriptionId)
 
-	saved, found := authority.OperationalIntent(reference.Id)
+	saved, found := dssClient.OperationalIntent(reference.Id)
 	require.True(t, found)
 	require.Equal(t, params.Extents, *saved.Details.Volumes)
 
-	sub, found := authority.Subscription(reference.SubscriptionId)
+	sub, found := dssClient.Subscription(reference.SubscriptionId)
 	require.NotZero(t, sub)
 	require.EqualValues(t, "the-sub-base-url", sub.UssBaseUrl)
 	require.True(t, *sub.ImplicitSubscription)
@@ -80,74 +80,74 @@ func TestInMemoryDSSCreatesAnOperationalIntent(t *testing.T) {
 }
 
 func TestInMemoryDSSCreatePanicsWithoutContext(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
+	dssClient := dss.NewInMemoryDSS()
 	id := scdtest.NewEntityID()
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: scdtest.NewVolumes4D(),
 	}
 
 	require.Panics(t, func() {
-		authority.PutOperationalIntentReference(nil, id, nil, params)
+		dssClient.PutOperationalIntentReference(nil, id, nil, params)
 	})
 }
 
 func TestInMemoryDSSUpdatesAnOperationalIntent(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	reference := putIntent(t, authority)
-	saved, _ := authority.OperationalIntent(reference.Id)
+	dssClient := dss.NewInMemoryDSS()
+	reference := putIntent(t, dssClient)
+	saved, _ := dssClient.OperationalIntent(reference.Id)
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: *saved.Details.Volumes,
 	}
 
-	intent, err := authority.PutOperationalIntentReference(t.Context(), reference.Id, reference.Ovn, params)
+	intent, err := dssClient.PutOperationalIntentReference(t.Context(), reference.Id, reference.Ovn, params)
 	require.NoError(t, err)
 	require.Equal(t, *intent.OperationalIntentReference.Ovn, *saved.Reference.Ovn)
 }
 
 func TestInMemoryDSSCreatesAnOperationalIntentWithoutImplicitSubscription(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
+	dssClient := dss.NewInMemoryDSS()
 	id := scdtest.NewEntityID()
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: scdtest.NewVolumes4D(),
 	}
 
-	intent, err := authority.PutOperationalIntentReference(t.Context(), id, nil, params)
+	intent, err := dssClient.PutOperationalIntentReference(t.Context(), id, nil, params)
 	require.NoError(t, err)
 
-	saved, found := authority.OperationalIntent(intent.OperationalIntentReference.Id)
+	saved, found := dssClient.OperationalIntent(intent.OperationalIntentReference.Id)
 	require.True(t, found)
 	require.Zero(t, saved.Reference.SubscriptionId)
 
-	sub, found := authority.Subscription(saved.Reference.SubscriptionId)
+	sub, found := dssClient.Subscription(saved.Reference.SubscriptionId)
 	require.False(t, found)
 	require.Zero(t, sub)
 }
 
 func TestInMemoryDSSFindsAPutOperationalIntent(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	reference := putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	reference := putIntent(t, dssClient)
 
-	intent, found := authority.OperationalIntent(reference.Id)
+	intent, found := dssClient.OperationalIntent(reference.Id)
 
 	require.True(t, found)
 	require.Equal(t, reference, intent.Reference)
 }
 
 func TestInMemoryDSSDoesNotFindAnUnknownOperationalIntent(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	putIntent(t, dssClient)
 
-	intent, found := authority.OperationalIntent(scdtest.NewEntityID())
+	intent, found := dssClient.OperationalIntent(scdtest.NewEntityID())
 
 	require.False(t, found)
 	require.Zero(t, intent)
 }
 
 func TestInMemoryDSSListsEveryOperationalIntent(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	first, second := putIntent(t, authority), putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	first, second := putIntent(t, dssClient), putIntent(t, dssClient)
 
-	intents := authority.OperationalIntents()
+	intents := dssClient.OperationalIntents()
 
 	require.Len(t, intents, 2)
 	require.ElementsMatch(t,
@@ -156,65 +156,65 @@ func TestInMemoryDSSListsEveryOperationalIntent(t *testing.T) {
 }
 
 func TestInMemoryDSSFindsTheImplicitSubscription(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	reference := putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	reference := putIntent(t, dssClient)
 
-	subscription, found := authority.Subscription(reference.SubscriptionId)
+	subscription, found := dssClient.Subscription(reference.SubscriptionId)
 
 	require.True(t, found)
 	require.Equal(t, subscriberURL, subscription.UssBaseUrl)
 }
 
 func TestInMemoryDSSDeletesOperationalIntent(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	reference := putIntent(t, authority)
-	saved, _ := authority.OperationalIntent(reference.Id)
+	dssClient := dss.NewInMemoryDSS()
+	reference := putIntent(t, dssClient)
+	saved, _ := dssClient.OperationalIntent(reference.Id)
 
-	result, err := authority.DeleteOperationalIntentReference(t.Context(), reference.Id, *reference.Ovn)
+	result, err := dssClient.DeleteOperationalIntentReference(t.Context(), reference.Id, *reference.Ovn)
 	require.NoError(t, err)
 	require.Equal(t, saved.Reference, result.OperationalIntentReference)
 
-	saved, found := authority.OperationalIntent(reference.Id)
+	saved, found := dssClient.OperationalIntent(reference.Id)
 	require.False(t, found)
 	require.Zero(t, saved)
 }
 
 func TestInMemoryDSSCannotDeleteOperationalIntentWithMismatchedOVN(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	reference := putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	reference := putIntent(t, dssClient)
 	badOVN := scdussv1.EntityOVN(uuid.New().String())
 
-	result, err := authority.DeleteOperationalIntentReference(t.Context(), reference.Id, badOVN)
+	result, err := dssClient.DeleteOperationalIntentReference(t.Context(), reference.Id, badOVN)
 	require.EqualError(t, err, "dss: supplied OVN does not match")
 	require.Zero(t, result.OperationalIntentReference)
 
-	saved, found := authority.OperationalIntent(reference.Id)
+	saved, found := dssClient.OperationalIntent(reference.Id)
 	require.True(t, found)
 	require.Equal(t, reference, saved.Reference)
 }
 
 func TestInMemoryDSSCannotDeleteOperationalIntentNotFound(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
+	dssClient := dss.NewInMemoryDSS()
 	entityID := scdtest.NewEntityID()
 	ovn := scdussv1.EntityOVN(uuid.New().String())
 
-	result, err := authority.DeleteOperationalIntentReference(t.Context(), entityID, ovn)
+	result, err := dssClient.DeleteOperationalIntentReference(t.Context(), entityID, ovn)
 	require.EqualError(t, err, "dss: operational intent not found "+string(entityID))
 	require.Zero(t, result.OperationalIntentReference)
 }
 
 func TestInMemoryDSSDeletePanicsWithoutContext(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	reference := putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	reference := putIntent(t, dssClient)
 
 	require.Panics(t, func() {
-		authority.DeleteOperationalIntentReference(nil, reference.Id, *reference.Ovn)
+		dssClient.DeleteOperationalIntentReference(nil, reference.Id, *reference.Ovn)
 	})
 }
 
 func TestInMemoryDSSListsEverySubscriberToNotifyOldestFirst(t *testing.T) {
-	authority := dss.NewInMemoryDSS()
-	putIntent(t, authority)
+	dssClient := dss.NewInMemoryDSS()
+	putIntent(t, dssClient)
 	params := scdussv1.PutOperationalIntentReferenceParameters{
 		Extents: scdtest.NewVolumes4D(),
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
@@ -222,7 +222,7 @@ func TestInMemoryDSSListsEverySubscriberToNotifyOldestFirst(t *testing.T) {
 		},
 	}
 
-	result, err := authority.PutOperationalIntentReference(t.Context(), scdtest.NewEntityID(), nil, params)
+	result, err := dssClient.PutOperationalIntentReference(t.Context(), scdtest.NewEntityID(), nil, params)
 
 	require.NoError(t, err)
 	subscriberURLs := util.Map(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) scdussv1.SubscriptionUssBaseURL {
