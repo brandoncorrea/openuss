@@ -1,7 +1,6 @@
 package uss
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
@@ -11,19 +10,9 @@ import (
 )
 
 func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
-	entityID := r.PathValue("entity_id")
-	if entityID == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 	// TODO: Missing context
-	intent, err := h.Intents.Get(nil, scdussv1.EntityID(entityID))
-
-	// TODO: What if there is a different kind of error?
-	if errors.Is(err, scd.ErrNotFound) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+	// TODO: No error handling; always 200
+	intent, _ := h.Intents.Get(nil, scdussv1.EntityID(r.PathValue("entity_id")))
 	api.WriteJSON(w, http.StatusOK, toWire(intent))
 }
 

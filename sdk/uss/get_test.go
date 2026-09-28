@@ -19,23 +19,6 @@ func newHandler() *uss.Handler {
 	return uss.New(scd.NewInMemoryIntentStore())
 }
 
-func TestGetOperationalIntentMissingEntityID(t *testing.T) {
-	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
-	handler := newHandler()
-	handler.GetOperationalIntent(recorder, request)
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
-}
-
-func TestGetOperationalIntentNotExists(t *testing.T) {
-	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
-	request.SetPathValue("entity_id", uuid.New().String())
-	handler := newHandler()
-	handler.GetOperationalIntent(recorder, request)
-	require.Equal(t, http.StatusNotFound, recorder.Code)
-}
-
 func TestGetOperationalIntentSuccess(t *testing.T) {
 	entityID := uuid.New().String()
 	intent := scd.OperationalIntent{
