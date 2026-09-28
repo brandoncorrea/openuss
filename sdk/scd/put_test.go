@@ -86,6 +86,7 @@ func toDSSIntents(intents ...scd.OperationalIntent) []scdussv1.OperationalIntent
 				Id:         intent.EntityID,
 				Ovn:        new(intent.OVN),
 				UssBaseUrl: intent.USSBaseURL,
+				State:      intent.State,
 			},
 			Details: scdussv1.OperationalIntentDetails{
 				Volumes:  new(intent.Volumes),
@@ -110,17 +111,21 @@ func newPeerIntent() scd.OperationalIntent {
 	return intent
 }
 
-func newHighPriorityPeerIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
+func newPeerIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
 	intent := newPeerIntent()
 	intent.Volumes = newSquareVolumes(corner)
+	return intent
+}
+
+func newHighPriorityPeerIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
+	intent := newPeerIntentAt(corner)
 	intent.Priority = 100
 	return intent
 }
 
 func newActivatedIntentAt(corner scdussv1.LatLngPoint) scd.OperationalIntent {
-	intent := newIntent()
+	intent := newPeerIntentAt(corner)
 	intent.State = scdussv1.OperationalIntentState_Activated
-	intent.Volumes = newSquareVolumes(corner)
 	return intent
 }
 
@@ -285,6 +290,18 @@ func TestCreateOperationalIntentRetriesWithPeerOVNsWhenKeyIsMissing(t *testing.T
 
 func TestCreateOperationalIntentConflictsWithHighPriorityPeer(t *testing.T) {
 	peer := newHighPriorityPeerIntentAt(sharedCorner())
+	service := newServiceFromPeers(t, peer)
+
+	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))
+
+	require.ErrorIs(t, err, scd.ErrConflict)
+	require.Zero(t, intent)
+	requireNothingStored(t, service)
+}
+
+func TestCreateOperationalIntentConflictsWithPeerWithInvalidFlyingState(t *testing.T) {
+	peer := newPeerIntentAt(distantCorner())
+	peer.State = "Flying"
 	service := newServiceFromPeers(t, peer)
 
 	intent, err := service.CreateOperationalIntent(t.Context(), newIntentParamsAt(sharedCorner()))

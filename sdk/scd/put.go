@@ -118,6 +118,9 @@ func isBlockingUs(
 	intent OperationalIntent,
 	params IntentParams,
 ) bool {
+	if other.State == "Flying" {
+		return true
+	}
 	if params.Priority > other.Priority {
 		return false
 	}
@@ -195,6 +198,7 @@ func hasKnownConflict(
 // TODO(gap): Dereferences without nil checks
 func intentFromDetails(details scdussv1.GetOperationalIntentDetailsResponse) OperationalIntent {
 	return OperationalIntent{
+		State:    details.OperationalIntent.Reference.State,
 		Priority: *details.OperationalIntent.Details.Priority,
 		Volumes:  *details.OperationalIntent.Details.Volumes,
 		OVN:      *details.OperationalIntent.Reference.Ovn,
