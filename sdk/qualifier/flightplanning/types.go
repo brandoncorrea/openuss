@@ -29,7 +29,6 @@ const (
 	FlightPlanStatusClosed     FlightPlanStatus = "Closed"
 )
 
-// PlanningActivityResult
 type PlanningActivityResult string
 
 const (

@@ -19,6 +19,7 @@ func (h *Handler) PutFlightPlan(w http.ResponseWriter, r *http.Request) {
 	json.UnmarshalRead(r.Body, &body)
 
 	// TODO(gap): execution_style is ignored; every request is treated as IfAllowed
+	// TODO(gap): Validate flight_plan_id is a valid UUID
 	id := uuid.MustParse(r.PathValue("flight_plan_id"))
 	result := h.putOrRejectFlight(r.Context(), id, body.FlightPlan)
 	api.WriteJSON(w, http.StatusOK, result)
@@ -31,7 +32,6 @@ func (h *Handler) putOrRejectFlight(
 ) FlightPlanResponse {
 	existingFlight := h.Flights.Get(flightID)
 
-	// TODO(gap): Validate flight_plan_id is a valid UUID, among other things
 	intent, err := h.putIntent(ctx, existingFlight, toIntentParams(plan))
 	if errors.Is(err, scd.ErrNotSupported) {
 		return planningResponse(PlanningActivityResultNotSupported, intent)
