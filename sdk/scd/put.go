@@ -13,8 +13,6 @@ import (
 	"bwawan.com/openuss/sdk/internal/volume"
 )
 
-const subscriptionURL = scdussv1.SubscriptionUssBaseURL("x")
-
 func (s *Service) CreateOperationalIntent(
 	ctx context.Context,
 	params IntentParams,
@@ -80,7 +78,7 @@ func (s *Service) put(
 	}
 
 	otherSubscribers := util.Remove(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) bool {
-		return subscriber.UssBaseUrl == subscriptionURL
+		return subscriber.UssBaseUrl == scdussv1.SubscriptionUssBaseURL(s.USSBaseURL)
 	})
 
 	// TODO(gap): Only the first subscriber is notified - the rest are ignored
@@ -147,8 +145,7 @@ func (s *Service) createPutRequestParams(
 		UssBaseUrl: s.USSBaseURL,
 		Key:        new(key),
 		NewSubscription: &scdussv1.ImplicitSubscriptionParameters{
-			// TODO(gap): This probably needs to be a proper URL
-			UssBaseUrl: subscriptionURL,
+			UssBaseUrl: scdussv1.SubscriptionUssBaseURL(s.USSBaseURL),
 		},
 	}
 }

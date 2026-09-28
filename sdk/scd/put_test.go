@@ -156,7 +156,7 @@ func TestCreateOperationalIntentRegistersItWithTheDSS(t *testing.T) {
 	require.EqualValues(t, ussBaseURL, dssIntent.Reference.UssBaseUrl)
 	subscription, found := dssClient.Subscription(dssIntent.Reference.SubscriptionId)
 	require.True(t, found)
-	require.EqualValues(t, "x", subscription.UssBaseUrl)
+	require.EqualValues(t, ussBaseURL, subscription.UssBaseUrl)
 }
 
 func TestUpdateOperationalIntentSendsTheRequestedState(t *testing.T) {
