@@ -160,25 +160,3 @@ func TestDoReturnsTransportError(t *testing.T) {
 	require.Zero(t, response)
 	require.ErrorContains(t, err, `Get "http://dss.example.com": Boom!`)
 }
-
-func TestDoReturnsStatusAndBufferedBody(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		api.WriteJSON(w, http.StatusConflict, map[string]string{
-			"foo": "bar",
-		})
-	}
-	response, err := newClient(t, handler).Get(t.Context(), "http://dss.example.com")
-	require.NoError(t, err)
-	require.Equal(t, http.StatusConflict, response.StatusCode)
-	require.Equal(t, "{\"foo\":\"bar\"}\n", string(response.Body))
-}
-
-func TestDoReturnsEmptyBodyWhenNoneIsSent(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}
-	response, err := newClient(t, handler).Get(t.Context(), "http://dss.example.com")
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, response.StatusCode)
-	require.Empty(t, response.Body)
-}

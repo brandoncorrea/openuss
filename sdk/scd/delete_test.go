@@ -3,27 +3,10 @@ package scd_test
 import (
 	"testing"
 
-	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
 	"github.com/stretchr/testify/require"
 )
-
-func newCoordinatedIntent(t *testing.T, service *scd.Service) scd.OperationalIntent {
-	t.Helper()
-	params := scdussv1.PutOperationalIntentReferenceParameters{
-		Extents: scdtest.NewVolumes4D(),
-	}
-	result, err := service.DSS.PutOperationalIntentReference(t.Context(), scdtest.NewEntityID(), nil, params)
-	require.NoError(t, err)
-
-	intent := scd.OperationalIntent{
-		EntityID: result.OperationalIntentReference.Id,
-		OVN:      *result.OperationalIntentReference.Ovn,
-	}
-	require.NoError(t, service.Intents.Upsert(t.Context(), intent))
-	return intent
-}
 
 func TestDeleteOperationalIntentRemovesItFromDSSAndStore(t *testing.T) {
 	service, dssClient := newService()

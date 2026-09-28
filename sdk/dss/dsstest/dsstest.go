@@ -24,9 +24,9 @@ func NewDSS(t *testing.T, handler http.HandlerFunc) *dss.UTMClient {
 	return dss.New("http://dss.example.com", client)
 }
 
-func NewPeerHandler(peers []scdussv1.OperationalIntent) http.HandlerFunc {
-	handleDSS := dssHandlerFromPeers(peers)
-	handleUSS := ussHandlerFromPeers(peers)
+func NewEcosystemHandler(registered []scdussv1.OperationalIntent) http.HandlerFunc {
+	handleDSS := dssHandlerFor(registered)
+	handleUSS := ussHandlerFor(registered)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Host == "dss.localutm" {
@@ -37,16 +37,16 @@ func NewPeerHandler(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	}
 }
 
-func ussHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
+func ussHandlerFor(registered []scdussv1.OperationalIntent) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		index := slices.IndexFunc(peers, func(intent scdussv1.OperationalIntent) bool {
+		index := slices.IndexFunc(registered, func(intent scdussv1.OperationalIntent) bool {
 			host := strings.TrimPrefix(string(intent.Reference.UssBaseUrl), "http://")
 			return host == r.Host && string(intent.Reference.Id) == ussEntityID(r.RequestURI)
 		})
 
 		if index >= 0 {
 			api.WriteJSON(w, http.StatusOK, scdussv1.GetOperationalIntentDetailsResponse{
-				OperationalIntent: peers[index],
+				OperationalIntent: registered[index],
 			})
 		} else {
 			w.WriteHeader(http.StatusNotFound)
@@ -54,8 +54,8 @@ func ussHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
 	}
 }
 
-func dssHandlerFromPeers(peers []scdussv1.OperationalIntent) http.HandlerFunc {
-	references := util.Map(peers, func(intent scdussv1.OperationalIntent) scdussv1.OperationalIntentReference {
+func dssHandlerFor(registered []scdussv1.OperationalIntent) http.HandlerFunc {
+	references := util.Map(registered, func(intent scdussv1.OperationalIntent) scdussv1.OperationalIntentReference {
 		return intent.Reference
 	})
 
