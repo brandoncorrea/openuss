@@ -3,14 +3,12 @@ package scd
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/dss"
 	"bwawan.com/openuss/sdk/internal/util"
-	"bwawan.com/openuss/sdk/internal/volume"
 )
 
 func (s *Service) CreateOperationalIntent(
@@ -43,30 +41,26 @@ func (s *Service) put(
 	ovn *scdussv1.EntityOVN,
 	params IntentParams,
 ) (OperationalIntent, error) {
-	if params.State == scdussv1.OperationalIntentState_Nonconforming {
-		return OperationalIntent{}, ErrNotSupported
+	if err := params.validate(); err != nil {
+		return OperationalIntent{}, err
 	}
-	if isInvalidIntent(params) {
-		return OperationalIntent{}, ErrRejected
+	if params.State == scdussv1.OperationalIntentState_Activated && ovn == nil {
+		return OperationalIntent{}, ErrConflict
 	}
 
 	// TODO: Missing context
 	// TODO(gap): No error handling
 	// TODO(gap): This includes our own intent on Update
 	knownIntents, _ := s.Intents.List(nil)
-
 	if hasKnownConflict(intent, params, knownIntents) {
 		return OperationalIntent{}, ErrRejected
 	}
-	if params.State == scdussv1.OperationalIntentState_Activated && ovn == nil {
-		return OperationalIntent{}, ErrConflict
-	}
 
 	result, err := s.submitOperationalIntent(ctx, intent, ovn, params, knownIntents)
-
 	if err != nil {
 		return OperationalIntent{}, err
 	}
+
 	s.notifyPeers(ctx, result)
 	return s.saveOperationalIntent(params, result), nil
 }
@@ -85,90 +79,15 @@ func (s *Service) submitOperationalIntent(
 	if conflict, ok := errors.AsType[dss.AirspaceConflictError](err); ok {
 		// TODO(gap): We only fetch the first missing intent - the rest are ignored
 		missing := (*conflict.MissingOperationalIntents)[0]
-		details, err := s.Peer.GetOperationalIntentDetails(ctx, missing.UssBaseUrl, missing.Id)
-		// TODO(gap): We assume any peer error is a conflict
+		peerOVN, err := s.resolvePeerConflict(ctx, missing, intent, params)
 		if err != nil {
-			return scdussv1.ChangeOperationalIntentReferenceResponse{}, ErrConflict
+			return scdussv1.ChangeOperationalIntentReferenceResponse{}, err
 		}
-		peerIntent := intentFromDetails(details)
-		if isBlockingUs(peerIntent, intent, params) {
-			return scdussv1.ChangeOperationalIntentReferenceResponse{}, ErrConflict
-		}
-		putParams.Key = new(append(*putParams.Key, peerIntent.OVN))
+		putParams.Key = new(append(*putParams.Key, peerOVN))
 		// TODO(gap): We assume the DSS won't return a subsequent conflict
 		result, _ = s.DSS.PutOperationalIntentReference(ctx, intent.EntityID, ovn, putParams)
 	}
 	return result, nil
-}
-
-// TODO(gap): Only the first peer subscriber is notified - the rest are ignored
-func (s *Service) notifyPeers(
-	ctx context.Context,
-	result scdussv1.ChangeOperationalIntentReferenceResponse,
-) {
-	ownURL := scdussv1.SubscriptionUssBaseURL(s.USSBaseURL)
-	index := slices.IndexFunc(result.Subscribers, func(subscriber scdussv1.SubscriberToNotify) bool {
-		return subscriber.UssBaseUrl != ownURL
-	})
-
-	if index >= 0 {
-		s.notifyPeer(ctx, result.Subscribers[index], result)
-	}
-}
-
-func (s *Service) notifyPeer(
-	ctx context.Context,
-	subscriber scdussv1.SubscriberToNotify,
-	result scdussv1.ChangeOperationalIntentReferenceResponse,
-) {
-	// TODO(gap): No error handling
-	s.Peer.NotifyOperationalIntentDetails(
-		ctx,
-		subscriber.UssBaseUrl,
-		// TODO(gap): Missing 'Subscriptions' attribute
-		scdussv1.PutOperationalIntentDetailsParameters{
-			OperationalIntentId: result.OperationalIntentReference.Id,
-			// TODO(gap): Missing 'Details' attribute
-			OperationalIntent: &scdussv1.OperationalIntent{
-				Reference: scdussv1.OperationalIntentReference{
-					// TODO(gap): Missing 'Version', 'Ovn', 'UssBaseUrl', and 'SubscriptionId' attributes
-					Id:              result.OperationalIntentReference.Id,
-					Manager:         result.OperationalIntentReference.Manager,
-					UssAvailability: result.OperationalIntentReference.UssAvailability,
-					State:           result.OperationalIntentReference.State,
-					TimeStart:       result.OperationalIntentReference.TimeStart,
-					TimeEnd:         result.OperationalIntentReference.TimeEnd,
-				},
-			},
-		})
-}
-
-func isBlockingUs(
-	other OperationalIntent,
-	intent OperationalIntent,
-	params IntentParams,
-) bool {
-	if other.EntityID == intent.EntityID {
-		return false
-	}
-	// TODO(gap): This is the only schema validation we do against peer intents
-	if other.State == "Flying" {
-		return true
-	}
-	if params.Priority > other.Priority {
-		return false
-	}
-	if !volume.VolumesIntersect(params.Volumes, other.Volumes) {
-		return false
-	}
-	if intent.State == scdussv1.OperationalIntentState_Activated {
-		return !volume.VolumesIntersect(intent.Volumes, other.Volumes)
-	}
-	return true
-}
-
-func isInvalidIntent(params IntentParams) bool {
-	return isTooEager(params) || hasEnded(params)
 }
 
 func (s *Service) createPutRequestParams(
@@ -220,50 +139,4 @@ func (s *Service) saveOperationalIntent(
 	// TODO(gap): No error handling
 	s.Intents.Upsert(nil, intent)
 	return intent
-}
-
-func hasKnownConflict(
-	intent OperationalIntent,
-	params IntentParams,
-	knownIntents []OperationalIntent,
-) bool {
-	return slices.ContainsFunc(knownIntents, func(other OperationalIntent) bool {
-		return isBlockingUs(other, intent, params)
-	})
-}
-
-// TODO(gap): Dereferences without nil checks
-func intentFromDetails(details scdussv1.GetOperationalIntentDetailsResponse) OperationalIntent {
-	return OperationalIntent{
-		State:    details.OperationalIntent.Reference.State,
-		Priority: *details.OperationalIntent.Details.Priority,
-		Volumes:  *details.OperationalIntent.Details.Volumes,
-		OVN:      *details.OperationalIntent.Reference.Ovn,
-	}
-}
-
-const planningHorizon = 30 * 24 * time.Hour
-
-func isTooEager(params IntentParams) bool {
-	return time.Now().Add(planningHorizon).Before(startTime(params))
-}
-
-func hasEnded(params IntentParams) bool {
-	return endTime(params).Before(time.Now())
-}
-
-func startTime(params IntentParams) time.Time {
-	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
-	return rfc3339(params.Volumes[0].TimeStart.Value)
-}
-
-func endTime(params IntentParams) time.Time {
-	// TODO(gap): Nothing validates a zero-area or multi-area flight plan
-	return rfc3339(params.Volumes[0].TimeEnd.Value)
-}
-
-func rfc3339(s string) time.Time {
-	// TODO(gap): Nothing validates a malformed timestamp
-	t, _ := time.Parse(time.RFC3339, s)
-	return t
 }
