@@ -89,12 +89,11 @@ Each finding states what the qualifier does and what OpenUSS does that still pas
   (["Operational intent not shared"](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/flight_intent_validation/flight_intent_validation.md#-operational-intent-not-shared-check) 🛑).
 - **OpenUSS:** it reports Completed/Closed without checking whether the DSS delete succeeded.
 
-**B4. Versioning content is not evaluated.**
+**B4. Versioning content is echoed.**
 - **Qualifier:** [GetSystemVersions](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/versioning/get_system_versions.md) and
   [EvaluateSystemVersions](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/uss_qualifier/scenarios/astm/utm/versioning/evaluate_system_versions.md)
   [require](https://github.com/interuss/monitoring/blob/e1e3ad2e5c018eb7afe2eb72c81eceb3ea05b860/monitoring/monitorlib/clients/versioning/client_interuss.py#L33-L61) a 200, a
-  `system_identity` field that is present, and a non-empty version. The returned identity is never
-  compared with the one requested.
+  `system_identity` field that matches what was requested, and a non-empty version. An invalid `system_identity` is never tested.
 - **OpenUSS:** it returns `system_version: "blah"` and echoes back any requested identity, where
   the [versioning spec](https://github.com/interuss/automated_testing_interfaces/blob/3e6060bd6d5cd665eb5cc60ec7aaeab104547769/versioning/versioning.yaml#L98-L99) says an unknown identity should get 404.
 
