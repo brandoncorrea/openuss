@@ -28,7 +28,8 @@ func (s *InMemoryIntentStore) Get(ctx context.Context, id scdussv1.EntityID) (Op
 	return intent, nil
 }
 
-func (s *InMemoryIntentStore) List(context.Context) ([]OperationalIntent, error) {
+func (s *InMemoryIntentStore) List(ctx context.Context) ([]OperationalIntent, error) {
+	mustHaveContext(ctx)
 	return slices.Collect(maps.Values(s.intents)), nil
 }
 

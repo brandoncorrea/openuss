@@ -75,3 +75,10 @@ func TestIntentStoreListReturnsEveryIntent(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, []scd.OperationalIntent{first, second}, intents)
 }
+
+func TestIntentStoreListPanicsWithoutContext(t *testing.T) {
+	store := scd.NewInMemoryIntentStore()
+	require.Panics(t, func() {
+		store.List(nil)
+	})
+}

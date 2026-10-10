@@ -47,10 +47,9 @@ func (s *Service) put(
 		return OperationalIntent{}, ErrConflict
 	}
 
-	// TODO: Missing context
 	// TODO(gap): No error handling
 	// TODO(gap): This includes our own intent on Update
-	knownIntents, _ := s.Intents.List(nil)
+	knownIntents, _ := s.Intents.List(ctx)
 	if hasKnownConflict(intent, params, knownIntents) {
 		return OperationalIntent{}, ErrRejected
 	}
