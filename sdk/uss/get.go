@@ -10,9 +10,8 @@ import (
 )
 
 func (h *Handler) GetOperationalIntent(w http.ResponseWriter, r *http.Request) {
-	// TODO: Missing context
 	// TODO(gap): No error handling; always 200
-	intent, _ := h.Intents.Get(nil, scdussv1.EntityID(r.PathValue("entity_id")))
+	intent, _ := h.Intents.Get(r.Context(), scdussv1.EntityID(r.PathValue("entity_id")))
 	api.WriteJSON(w, http.StatusOK, toWire(intent))
 }
 

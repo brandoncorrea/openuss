@@ -28,6 +28,13 @@ func TestIntentStoreGetReturnsUpsertedIntent(t *testing.T) {
 	require.Equal(t, intent, stored)
 }
 
+func TestIntentStoreGetPanicsWithoutContext(t *testing.T) {
+	store := scd.NewInMemoryIntentStore()
+	require.Panics(t, func() {
+		store.Get(nil, scdtest.NewEntityID())
+	})
+}
+
 func TestIntentStoreDeleteRemovesIntent(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 	intent := newIntent()

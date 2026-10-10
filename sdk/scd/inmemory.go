@@ -19,7 +19,8 @@ func NewInMemoryIntentStore() *InMemoryIntentStore {
 	}
 }
 
-func (s *InMemoryIntentStore) Get(_ context.Context, id scdussv1.EntityID) (OperationalIntent, error) {
+func (s *InMemoryIntentStore) Get(ctx context.Context, id scdussv1.EntityID) (OperationalIntent, error) {
+	mustHaveContext(ctx)
 	intent, ok := s.intents[id]
 	if !ok {
 		return OperationalIntent{}, ErrNotFound
@@ -39,4 +40,10 @@ func (s *InMemoryIntentStore) Upsert(_ context.Context, intent OperationalIntent
 func (s *InMemoryIntentStore) Delete(_ context.Context, id scdussv1.EntityID) error {
 	delete(s.intents, id)
 	return nil
+}
+
+func mustHaveContext(ctx context.Context) {
+	if ctx == nil {
+		panic("inmemory dss: missing Context")
+	}
 }

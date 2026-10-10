@@ -25,9 +25,8 @@ func (s *Service) UpdateOperationalIntent(
 	id scdussv1.EntityID,
 	params IntentParams,
 ) (OperationalIntent, error) {
-	// TODO: Missing context
 	// TODO(gap): No error handling
-	existing, _ := s.Intents.Get(nil, id)
+	existing, _ := s.Intents.Get(ctx, id)
 	updated, err := s.put(ctx, existing, new(existing.OVN), params)
 	if err != nil {
 		return existing, err
