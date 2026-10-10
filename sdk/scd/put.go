@@ -60,7 +60,7 @@ func (s *Service) put(
 	}
 
 	s.notifyPeers(ctx, result)
-	return s.saveOperationalIntent(params, result), nil
+	return s.saveOperationalIntent(ctx, params, result), nil
 }
 
 func (s *Service) submitOperationalIntent(
@@ -112,6 +112,7 @@ func keyFromIntents(intents []OperationalIntent) scdussv1.Key {
 
 // TODO(gap): Nothing validates the DSS response
 func (s *Service) saveOperationalIntent(
+	ctx context.Context,
 	params IntentParams,
 	result scdussv1.ChangeOperationalIntentReferenceResponse,
 ) OperationalIntent {
@@ -133,8 +134,7 @@ func (s *Service) saveOperationalIntent(
 		SubscriptionID: result.OperationalIntentReference.SubscriptionId,
 		Volumes:        params.Volumes,
 	}
-	// TODO: Missing context
 	// TODO(gap): No error handling
-	s.Intents.Upsert(nil, intent)
+	s.Intents.Upsert(ctx, intent)
 	return intent
 }

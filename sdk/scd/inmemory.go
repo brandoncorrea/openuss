@@ -33,7 +33,8 @@ func (s *InMemoryIntentStore) List(ctx context.Context) ([]OperationalIntent, er
 	return slices.Collect(maps.Values(s.intents)), nil
 }
 
-func (s *InMemoryIntentStore) Upsert(_ context.Context, intent OperationalIntent) error {
+func (s *InMemoryIntentStore) Upsert(ctx context.Context, intent OperationalIntent) error {
+	mustHaveContext(ctx)
 	s.intents[intent.EntityID] = intent
 	return nil
 }

@@ -17,6 +17,13 @@ func TestIntentStoreGetUnknownIntentIsNotFound(t *testing.T) {
 	require.Zero(t, stored)
 }
 
+func TestIntentStoreGetPanicsWithoutContext(t *testing.T) {
+	store := scd.NewInMemoryIntentStore()
+	require.Panics(t, func() {
+		store.Get(nil, scdtest.NewEntityID())
+	})
+}
+
 func TestIntentStoreGetReturnsUpsertedIntent(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 	intent := newIntent()
@@ -28,10 +35,11 @@ func TestIntentStoreGetReturnsUpsertedIntent(t *testing.T) {
 	require.Equal(t, intent, stored)
 }
 
-func TestIntentStoreGetPanicsWithoutContext(t *testing.T) {
+func TestIntentStoreUpsertPanicsWithoutContext(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
+	intent := newIntent()
 	require.Panics(t, func() {
-		store.Get(nil, scdtest.NewEntityID())
+		store.Upsert(nil, intent)
 	})
 }
 
