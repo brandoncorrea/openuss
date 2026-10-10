@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO_ROOT="$(pwd)"
 
-DSS_REF="054dd66a5eb6ed4cec5d6f02b3404e380e4b4360"
+DSS_REF="c868303e1aae029d223a041b4c6862e04df8a0d6"
 GENERATOR_IMAGE="openuss/openapi-to-go-server:${DSS_REF}"
 
 API_FOLDER="${REPO_ROOT}/sdk/api"
