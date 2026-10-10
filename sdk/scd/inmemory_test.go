@@ -51,6 +51,19 @@ func TestIntentStoreDeleteRemovesIntent(t *testing.T) {
 	require.Empty(t, intents)
 }
 
+func TestIntentStoreDeleteUnknownIntentSucceeds(t *testing.T) {
+	store := scd.NewInMemoryIntentStore()
+
+	require.NoError(t, store.Delete(t.Context(), scdtest.NewEntityID()))
+}
+
+func TestIntentStoreDeletePanicsWithoutContext(t *testing.T) {
+	store := scd.NewInMemoryIntentStore()
+	require.Panics(t, func() {
+		store.Delete(nil, scdtest.NewEntityID())
+	})
+}
+
 func TestIntentStoreListReturnsEveryIntent(t *testing.T) {
 	store := scd.NewInMemoryIntentStore()
 	first, second := newIntent(), newIntent()
@@ -61,10 +74,4 @@ func TestIntentStoreListReturnsEveryIntent(t *testing.T) {
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []scd.OperationalIntent{first, second}, intents)
-}
-
-func TestIntentStoreDeleteUnknownIntentSucceeds(t *testing.T) {
-	store := scd.NewInMemoryIntentStore()
-
-	require.NoError(t, store.Delete(t.Context(), scdtest.NewEntityID()))
 }

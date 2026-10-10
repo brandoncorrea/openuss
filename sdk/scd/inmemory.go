@@ -37,7 +37,8 @@ func (s *InMemoryIntentStore) Upsert(_ context.Context, intent OperationalIntent
 	return nil
 }
 
-func (s *InMemoryIntentStore) Delete(_ context.Context, id scdussv1.EntityID) error {
+func (s *InMemoryIntentStore) Delete(ctx context.Context, id scdussv1.EntityID) error {
+	mustHaveContext(ctx)
 	delete(s.intents, id)
 	return nil
 }
