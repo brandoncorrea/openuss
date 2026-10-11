@@ -12,7 +12,12 @@ import (
 
 func RequireJSON[T any](t *testing.T, recorder *httptest.ResponseRecorder, expected T) {
 	t.Helper()
-	require.Equal(t, http.StatusOK, recorder.Code)
+	RequireJSONStatus(t, recorder, http.StatusOK, expected)
+}
+
+func RequireJSONStatus[T any](t *testing.T, recorder *httptest.ResponseRecorder, status int, expected T) {
+	t.Helper()
+	require.Equal(t, status, recorder.Code)
 
 	mediaType, _, err := mime.ParseMediaType(recorder.Header().Get("Content-Type"))
 	require.NoError(t, err)

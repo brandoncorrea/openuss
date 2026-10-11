@@ -9,6 +9,7 @@ import (
 	"uuid"
 
 	"bwawan.com/openuss/sdk/api/scdussv1"
+	"bwawan.com/openuss/sdk/auth"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/scdtest"
 	"bwawan.com/openuss/sdk/uss"
@@ -16,7 +17,10 @@ import (
 )
 
 func newHandler() *uss.Handler {
-	return uss.New(scd.NewInMemoryIntentStore())
+	return uss.New(
+		scd.NewInMemoryIntentStore(),
+		auth.NewUnsafeAuthorizer(),
+	)
 }
 
 func TestGetOperationalIntentReturnsTheStoredIntent(t *testing.T) {

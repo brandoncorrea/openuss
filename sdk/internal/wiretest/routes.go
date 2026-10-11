@@ -34,12 +34,12 @@ func RequireRouteRegistration(
 		t.Run(route.Method+" "+route.Path, func(t *testing.T) {
 			resolved, pattern := mux.Handler(httptest.NewRequest(route.Method, route.Path, nil))
 			require.Equal(t, route.Pattern, pattern)
-			requireSameFunc(t, route.Handler, resolved)
+			RequireSameFunc(t, route.Handler, resolved)
 		})
 	}
 }
 
-func requireSameFunc(t *testing.T, want, got any) {
+func RequireSameFunc(t *testing.T, want, got any) {
 	t.Helper()
 	wantValue := resolvePointer(want)
 	gotValue := resolvePointer(got)

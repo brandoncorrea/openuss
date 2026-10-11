@@ -121,7 +121,7 @@ func createRouter(intents scd.IntentStore, planning router.Registrar) http.Handl
 	return router.New(
 		versioning.New(),
 		planning,
-		uss.New(intents),
+		uss.New(intents, auth.NewUnsafeAuthorizer()),
 	)
 }
 
