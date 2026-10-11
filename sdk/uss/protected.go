@@ -26,6 +26,7 @@ func (p Protected) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // TODO(gap): a 401 does not send WWW-Authenticate: Bearer (RFC 6750 section 3)
 func writeAuthorizationFailure(w http.ResponseWriter, err error) {
+	// TODO(gap): No "Message" supplied to ErrorResponse
 	api.WriteJSON(w, authorizationFailureStatus(err), scdussv1.ErrorResponse{})
 }
 
