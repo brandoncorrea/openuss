@@ -9,6 +9,12 @@ services:
       OAUTH_ENDPOINT: ${OAUTH_ENDPOINT:-http://oauth.authority.localutm:8085/token}
       OAUTH_SUB: ${OAUTH_SUB:-uss5}
       USS_BASE_URL: ${USS_BASE_URL:-http://openuss.uss5.localutm:8080}
+      OAUTH_PUBLIC_KEY_FILE: /etc/openuss/oauth-public-key.pem
+    volumes:
+      - type: bind
+        source: ${INTERUSS_MONITORING_DIR:-../monitoring}/build/test-certs/auth2.pem
+        target: /etc/openuss/oauth-public-key.pem
+        read_only: true
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/flight_planning/v1/status"]
       interval: 2s
