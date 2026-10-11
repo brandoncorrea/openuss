@@ -8,24 +8,28 @@ import (
 )
 
 type Environment struct {
-	ListenAddress  string
-	USSBaseURL     string
-	InMemoryDSS    bool
-	DSSBaseURL     string
-	InMemoryTokens bool
-	OAuthEndpoint  string
-	OAuthSubject   string
+	DSSBaseURL         string
+	InMemoryDSS        bool
+	InMemoryTokens     bool
+	ListenAddress      string
+	OAuthEndpoint      string
+	OAuthPublicKeyFile string
+	OAuthSubject       string
+	UnsafeAuthorizer   bool
+	USSBaseURL         string
 }
 
 func ParseEnvironment(getenv func(string) string) Environment {
 	return Environment{
-		DSSBaseURL:     getenv("DSS_BASE_URL"),
-		InMemoryDSS:    getenv("DSS_IMPL") == "memory",
-		InMemoryTokens: getenv("TOKEN_IMPL") == "memory",
-		ListenAddress:  ":" + cmp.Or(getenv("PORT"), "8080"),
-		OAuthEndpoint:  getenv("OAUTH_ENDPOINT"),
-		OAuthSubject:   getenv("OAUTH_SUB"),
-		USSBaseURL:     getenv("USS_BASE_URL"),
+		DSSBaseURL:         getenv("DSS_BASE_URL"),
+		InMemoryDSS:        getenv("DSS_IMPL") == "memory",
+		InMemoryTokens:     getenv("TOKEN_IMPL") == "memory",
+		ListenAddress:      ":" + cmp.Or(getenv("PORT"), "8080"),
+		OAuthEndpoint:      getenv("OAUTH_ENDPOINT"),
+		OAuthPublicKeyFile: getenv("OAUTH_PUBLIC_KEY_FILE"),
+		OAuthSubject:       getenv("OAUTH_SUB"),
+		UnsafeAuthorizer:   getenv("AUTHORIZER_IMPL") == "none",
+		USSBaseURL:         getenv("USS_BASE_URL"),
 	}
 }
 

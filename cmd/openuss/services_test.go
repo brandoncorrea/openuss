@@ -1,6 +1,12 @@
 package main_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,23 +22,24 @@ import (
 
 func TestNewServicesSharesOneIntentStoreWithPlanning(t *testing.T) {
 	services, err := main.NewServices(main.Environment{
-		InMemoryTokens: true,
-		InMemoryDSS:    true,
-		USSBaseURL:     "the-uss-base-url",
+		InMemoryDSS:      true,
+		InMemoryTokens:   true,
+		UnsafeAuthorizer: true,
+		USSBaseURL:       "the-uss-base-url",
 	})
 
 	require.NoError(t, err)
 	service := services.Planning.SCD.(*scd.Service)
 	require.Same(t, services.Intents, service.Intents)
-	require.IsType(t, &auth.UnsafeAuthorizer{}, services.Authorizer)
 }
 
 func TestNewServicesHandsTheConfiguredTokenSourceToPlanning(t *testing.T) {
 	services, err := main.NewServices(main.Environment{
-		OAuthEndpoint: "http://oauth.local",
-		OAuthSubject:  "the-oauth-subject",
-		DSSBaseURL:    "http://dss.localutm",
-		USSBaseURL:    "the-uss-base-url",
+		DSSBaseURL:       "http://dss.localutm",
+		OAuthEndpoint:    "http://oauth.local",
+		OAuthSubject:     "the-oauth-subject",
+		UnsafeAuthorizer: true,
+		USSBaseURL:       "the-uss-base-url",
 	})
 
 	require.NoError(t, err)
@@ -42,13 +49,36 @@ func TestNewServicesHandsTheConfiguredTokenSourceToPlanning(t *testing.T) {
 	require.Equal(t, "http://oauth.local", tokens.Endpoint.String())
 }
 
+func TestNewServicesUsesTheConfiguredAuthorizer(t *testing.T) {
+	path, _ := writePublicKey(t)
+
+	services, err := main.NewServices(main.Environment{
+		InMemoryTokens:     true,
+		OAuthPublicKeyFile: path,
+		USSBaseURL:         "the-uss-base-url",
+	})
+
+	require.NoError(t, err)
+	require.IsType(t, &auth.JWTAuthorizer{}, services.Authorizer)
+}
+
 func TestNewServicesFailsWhenAServiceCannotBeBuilt(t *testing.T) {
 	cases := []struct {
 		name string
 		env  main.Environment
 	}{
-		{name: "a token source without an OAuth endpoint", env: main.Environment{USSBaseURL: "the-uss-base-url"}},
-		{name: "a planning handler without a USS base URL", env: main.Environment{InMemoryTokens: true}},
+		{
+			name: "a token source without an OAuth endpoint",
+			env:  main.Environment{USSBaseURL: "the-uss-base-url", UnsafeAuthorizer: true},
+		},
+		{
+			name: "a planning handler without a USS base URL",
+			env:  main.Environment{InMemoryTokens: true, UnsafeAuthorizer: true},
+		},
+		{
+			name: "an authorizer without a usable key",
+			env:  main.Environment{InMemoryTokens: true, USSBaseURL: "the-uss-base-url"},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -119,4 +149,64 @@ func TestNewInMemoryTokenSource(t *testing.T) {
 	source, err := main.NewTokenSource(main.Environment{InMemoryTokens: true})
 	require.NoError(t, err)
 	require.IsType(t, &auth.InMemoryTokenSource{}, source)
+}
+
+func TestNewUnsafeAuthorizer(t *testing.T) {
+	authorizer, err := main.NewAuthorizer(main.Environment{UnsafeAuthorizer: true})
+	require.NoError(t, err)
+	require.IsType(t, &auth.UnsafeAuthorizer{}, authorizer)
+}
+
+func writePublicKey(t *testing.T) (string, *rsa.PublicKey) {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	encoded, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "auth.pem")
+	block := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encoded})
+	require.NoError(t, os.WriteFile(path, block, 0o600))
+	return path, &key.PublicKey
+}
+
+func TestNewJWTAuthorizer(t *testing.T) {
+	path, key := writePublicKey(t)
+
+	authorizer, err := main.NewAuthorizer(main.Environment{OAuthPublicKeyFile: path})
+
+	require.NoError(t, err)
+	require.IsType(t, &auth.JWTAuthorizer{}, authorizer)
+	require.Equal(t, key, authorizer.(*auth.JWTAuthorizer).PublicKey)
+}
+
+func TestNewAuthorizerRequiresAUsableKey(t *testing.T) {
+	notAKey := filepath.Join(t.TempDir(), "not-a-key.pem")
+	require.NoError(t, os.WriteFile(notAKey, []byte("not a key"), 0o600))
+	cases := []struct {
+		name    string
+		path    string
+		wantErr string
+	}{
+		{
+			name:    "no key file configured",
+			path:    "",
+			wantErr: "OAUTH_PUBLIC_KEY_FILE is required",
+		},
+		{
+			name:    "a key file that does not exist",
+			path:    filepath.Join(t.TempDir(), "missing.pem"),
+			wantErr: "reading OAUTH_PUBLIC_KEY_FILE",
+		},
+		{
+			name:    "a key file that is not a PEM public key",
+			path:    notAKey,
+			wantErr: "parsing OAUTH_PUBLIC_KEY_FILE",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := main.NewAuthorizer(main.Environment{OAuthPublicKeyFile: tc.path})
+			require.ErrorContains(t, err, tc.wantErr)
+		})
+	}
 }

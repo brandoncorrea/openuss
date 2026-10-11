@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 
 	"bwawan.com/openuss/sdk/api"
@@ -11,6 +13,7 @@ import (
 	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/utmclient"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Services struct {
@@ -29,11 +32,33 @@ func NewServices(env Environment) (Services, error) {
 	if err != nil {
 		return Services{}, err
 	}
+	authorizer, err := NewAuthorizer(env)
+	if err != nil {
+		return Services{}, err
+	}
 	return Services{
 		Intents:    intents,
 		Planning:   planning,
-		Authorizer: auth.NewUnsafeAuthorizer(),
+		Authorizer: authorizer,
 	}, nil
+}
+
+func NewAuthorizer(env Environment) (api.Authorizer, error) {
+	if env.UnsafeAuthorizer {
+		return auth.NewUnsafeAuthorizer(), nil
+	}
+	if env.OAuthPublicKeyFile == "" {
+		return nil, errors.New("OAUTH_PUBLIC_KEY_FILE is required")
+	}
+	pem, err := os.ReadFile(env.OAuthPublicKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("reading OAUTH_PUBLIC_KEY_FILE: %w", err)
+	}
+	key, err := jwt.ParseRSAPublicKeyFromPEM(pem)
+	if err != nil {
+		return nil, fmt.Errorf("parsing OAUTH_PUBLIC_KEY_FILE: %w", err)
+	}
+	return auth.NewJWTAuthorizer(key), nil
 }
 
 func NewTokenSource(env Environment) (auth.TokenSource, error) {
