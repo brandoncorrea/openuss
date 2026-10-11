@@ -17,3 +17,12 @@ func Remove[T any](coll []T, pred func(T) bool) []T {
 	}
 	return out
 }
+
+func EveryFunc[T any](coll []T, pred func(T) bool) bool {
+	for _, item := range coll {
+		if !pred(item) {
+			return false
+		}
+	}
+	return true
+}

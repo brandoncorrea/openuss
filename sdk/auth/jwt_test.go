@@ -5,11 +5,13 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"bwawan.com/openuss/sdk/api"
 	"bwawan.com/openuss/sdk/api/scdussv1"
 	"bwawan.com/openuss/sdk/auth"
+	"bwawan.com/openuss/sdk/internal/util"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 )
@@ -26,11 +28,37 @@ func newPublicKey(t *testing.T) *rsa.PublicKey {
 	return &newPrivateKey(t).PublicKey
 }
 
+func withClaims(t *testing.T, key *rsa.PrivateKey, claims jwt.MapClaims) string {
+	t.Helper()
+	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
+	require.NoError(t, err)
+	return token
+}
+
+func newAuthorizationRequirement(scopes ...api.RequiredScope) api.AuthorizationOption {
+	return api.AuthorizationOption{
+		"Authority": scopes,
+	}
+}
+
+func newAuthorizationOptions(options [][]api.RequiredScope) []api.AuthorizationOption {
+	return util.Map(options, func(scopes []api.RequiredScope) api.AuthorizationOption {
+		return newAuthorizationRequirement(scopes...)
+	})
+}
+
 func signToken(t *testing.T, method jwt.SigningMethod, key *rsa.PrivateKey) string {
 	t.Helper()
 	token, err := jwt.NewWithClaims(method, jwt.MapClaims{}).SignedString(key)
 	require.NoError(t, err)
 	return token
+}
+
+func withScope(t *testing.T, key *rsa.PrivateKey, requiredScopes ...api.RequiredScope) string {
+	t.Helper()
+	scopes := util.Map(requiredScopes, util.TrimString)
+	claims := jwt.MapClaims{"scope": strings.Join(scopes, " ")}
+	return withClaims(t, key, claims)
 }
 
 func emptyRequest() *http.Request {
@@ -43,9 +71,15 @@ func newRequest(token string) *http.Request {
 	return request
 }
 
+func authorize(authorizer api.Authorizer, r *http.Request, options []api.AuthorizationOption) api.AuthorizationResult {
+	return authorizer.Authorize(httptest.NewRecorder(), r, options)
+}
+
 func authorizeGetDetails(authorizer api.Authorizer, r *http.Request) api.AuthorizationResult {
-	response := httptest.NewRecorder()
-	return authorizer.Authorize(response, r, scdussv1.GetOperationalIntentDetailsSecurity)
+	options := newAuthorizationOptions([][]api.RequiredScope{
+		{scdussv1.UtmStrategicCoordinationScope},
+	})
+	return authorize(authorizer, r, options)
 }
 
 func TestRejectsWithoutBearerToken(t *testing.T) {
@@ -58,9 +92,32 @@ func TestRejectsWithoutBearerToken(t *testing.T) {
 func TestAuthorizesTokenSignedByTheAuthority(t *testing.T) {
 	key := newPrivateKey(t)
 	authorizer := auth.NewJWTAuthorizer(&key.PublicKey)
-	token := signToken(t, jwt.SigningMethodRS256, key)
+	token := withScope(t, key, scdussv1.UtmStrategicCoordinationScope)
 	request := newRequest(token)
 	result := authorizeGetDetails(authorizer, request)
+	require.NoError(t, result.Error)
+}
+
+func TestAuthorizesTokenHoldingTheRequiredScopeAmongOthers(t *testing.T) {
+	key := newPrivateKey(t)
+	authorizer := auth.NewJWTAuthorizer(&key.PublicKey)
+	token := withScope(t, key, scdussv1.UtmAvailabilityArbitrationScope, scdussv1.UtmStrategicCoordinationScope)
+	request := newRequest(token)
+	result := authorizeGetDetails(authorizer, request)
+	require.NoError(t, result.Error)
+}
+
+func TestAuthorizesTokenSatisfyingAnyOneOption(t *testing.T) {
+	key := newPrivateKey(t)
+	authorizer := auth.NewJWTAuthorizer(&key.PublicKey)
+	token := withScope(t, key, scdussv1.UtmConstraintManagementScope)
+	request := newRequest(token)
+	options := newAuthorizationOptions([][]api.RequiredScope{
+		{scdussv1.UtmStrategicCoordinationScope},
+		{scdussv1.UtmConstraintManagementScope},
+		{scdussv1.UtmAvailabilityArbitrationScope},
+	})
+	result := authorize(authorizer, request, options)
 	require.NoError(t, result.Error)
 }
 
@@ -90,4 +147,31 @@ func TestRejectsTokenSignedWithAnotherAlgorithm(t *testing.T) {
 	result := authorizeGetDetails(authorizer, request)
 
 	require.ErrorIs(t, result.Error, auth.ErrUnauthenticated)
+}
+
+func TestRejectsTokenWithoutTheRequiredScope(t *testing.T) {
+	key := newPrivateKey(t)
+	authorizer := auth.NewJWTAuthorizer(&key.PublicKey)
+	token := withScope(t, key, scdussv1.UtmStrategicCoordinationScope)
+	request := newRequest(token)
+	options := newAuthorizationOptions([][]api.RequiredScope{
+		{scdussv1.UtmConstraintManagementScope},
+	})
+	result := authorize(authorizer, request, options)
+	require.ErrorIs(t, result.Error, auth.ErrPermissionDenied)
+}
+
+func TestRejectsTokenOnlyOneOfManyRequiredScopes(t *testing.T) {
+	key := newPrivateKey(t)
+	authorizer := auth.NewJWTAuthorizer(&key.PublicKey)
+	token := withScope(t, key, scdussv1.UtmStrategicCoordinationScope)
+	request := newRequest(token)
+	options := newAuthorizationOptions([][]api.RequiredScope{
+		{
+			scdussv1.UtmStrategicCoordinationScope,
+			scdussv1.UtmConstraintManagementScope,
+		},
+	})
+	result := authorize(authorizer, request, options)
+	require.ErrorIs(t, result.Error, auth.ErrPermissionDenied)
 }
