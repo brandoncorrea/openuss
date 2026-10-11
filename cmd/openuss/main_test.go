@@ -8,42 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	main "bwawan.com/openuss/cmd/openuss"
 	"bwawan.com/openuss/internal/logging/logtest"
-	"bwawan.com/openuss/sdk/auth"
-	"bwawan.com/openuss/sdk/dss"
-	"bwawan.com/openuss/sdk/httpclient"
-	"bwawan.com/openuss/sdk/peer"
 	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/scd"
 )
-
-func TestListenAddr(t *testing.T) {
-	tests := []struct {
-		port string
-		want string
-	}{
-		{"", ":8080"},
-		{"8123", ":8123"},
-		{"3000", ":3000"},
-	}
-
-	for _, tt := range tests {
-		var name string
-		if tt.port == "" {
-			name = "Default"
-		} else {
-			name = "Port" + tt.port
-		}
-		t.Run(name, func(t *testing.T) {
-			t.Setenv("PORT", tt.port)
-			assert.Equal(t, tt.want, main.ResolveAddress())
-		})
-	}
-}
 
 func TestHandleShutdownReportsAFailedFlush(t *testing.T) {
 	logger, rec := logtest.New()
@@ -86,10 +57,10 @@ func TestHandleShutdownGivesTheFlushALiveBudget(t *testing.T) {
 func serveThroughNewHTTPHandler(t *testing.T, method, target string) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	logger, logs := logtest.New()
-	handler := main.NewHTTPHandler(
-		scd.NewInMemoryIntentStore(),
-		&flightplanning.Handler{},
-		logger)
+	handler := main.NewHTTPHandler(main.Services{
+		Intents:  scd.NewInMemoryIntentStore(),
+		Planning: &flightplanning.Handler{},
+	}, logger)
 
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(method, target, nil))
@@ -113,64 +84,4 @@ func TestNewHandlerLogsUnroutedRequests(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, response.Code)
 	require.NotNil(t, entry, "expected the 404 to be logged")
 	require.EqualValues(t, http.StatusNotFound, entry["status"])
-}
-
-func TestNewPlanningHandlerMissingUSSBaseURL(t *testing.T) {
-	t.Setenv("DSS_BASE_URL", "http://dss.localutm")
-	t.Setenv("USS_BASE_URL", "\r\n\t ")
-	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	intents := scd.NewInMemoryIntentStore()
-	_, err := main.NewPlanningHandler(dummy, intents)
-	require.ErrorContains(t, err, "USS_BASE_URL is required")
-}
-
-func TestNewPlanningHandlerWithRealDSS(t *testing.T) {
-	t.Setenv("DSS_BASE_URL", "http://dss.localutm:8080/blah")
-	t.Setenv("USS_BASE_URL", "the-uss-base-url")
-	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	intents := scd.NewInMemoryIntentStore()
-	handler, err := main.NewPlanningHandler(dummy, intents)
-	require.NoError(t, err)
-	service := handler.SCD.(*scd.Service)
-	dssClient := service.DSS.(*dss.UTMClient)
-	require.Equal(t, "http://dss.localutm:8080/blah", dssClient.BaseURL)
-	require.Equal(t, dummy, dssClient.Client.TokenSource)
-	require.Equal(t, httpclient.DefaultTimeout, dssClient.Client.HTTP.HTTP.Timeout)
-	peerClient := service.Peer.(*peer.UTMClient)
-	require.Same(t, dssClient.Client, peerClient.Client)
-	require.IsType(t, &flightplanning.InMemoryFlightStore{}, handler.Flights)
-	require.Same(t, intents, service.Intents)
-	require.EqualValues(t, "the-uss-base-url", service.USSBaseURL)
-}
-
-func TestNewPlanningHandlerWithMemoryDSS(t *testing.T) {
-	t.Setenv("DSS_IMPL", "memory")
-	t.Setenv("USS_BASE_URL", "the-uss-base-url")
-	dummy, _ := auth.NewDummyOAuth("", "", nil)
-	intents := scd.NewInMemoryIntentStore()
-	handler, err := main.NewPlanningHandler(dummy, intents)
-	require.NoError(t, err)
-	service := handler.SCD.(*scd.Service)
-	require.IsType(t, &dss.InMemoryDSS{}, service.DSS)
-	require.IsType(t, &peer.UTMClient{}, service.Peer)
-	require.IsType(t, &flightplanning.InMemoryFlightStore{}, handler.Flights)
-	require.Same(t, intents, service.Intents)
-	require.EqualValues(t, "the-uss-base-url", service.USSBaseURL)
-}
-
-func TestNewDummyTokenSource(t *testing.T) {
-	t.Setenv("OAUTH_ENDPOINT", "http://oauth.local")
-	t.Setenv("OAUTH_SUB", "the-oauth-subject")
-	source, err := main.NewTokenSource()
-	require.NoError(t, err)
-	dummy := source.(*auth.DummyOAuth)
-	require.Equal(t, "http://oauth.local", dummy.Endpoint.String())
-	require.Equal(t, "the-oauth-subject", dummy.Subject)
-}
-
-func TestNewInMemoryTokenSource(t *testing.T) {
-	t.Setenv("TOKEN_IMPL", "memory")
-	source, err := main.NewTokenSource()
-	require.NoError(t, err)
-	require.IsType(t, auth.NewInMemoryTokenSource(), source)
 }

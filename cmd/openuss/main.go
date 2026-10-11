@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -16,50 +14,28 @@ import (
 	"bwawan.com/openuss/internal/router"
 	"bwawan.com/openuss/internal/server"
 	"bwawan.com/openuss/internal/tracing"
-	"bwawan.com/openuss/sdk/auth"
-	"bwawan.com/openuss/sdk/dss"
-	"bwawan.com/openuss/sdk/peer"
-	"bwawan.com/openuss/sdk/qualifier/flightplanning"
 	"bwawan.com/openuss/sdk/qualifier/versioning"
-	"bwawan.com/openuss/sdk/scd"
 	"bwawan.com/openuss/sdk/uss"
-	"bwawan.com/openuss/sdk/utmclient"
-	"github.com/joho/godotenv"
 )
 
 const FlushTimeout = 5 * time.Second
 
-func ResolveAddress() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		return ":8080"
-	}
-	return ":" + port
-}
-
-func loadEnv() error {
-	err := godotenv.Load()
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
-}
-
 func main() {
 	logger := logging.Default()
 	slog.SetDefault(logger)
-	err := loadEnv()
+	err := loadDotEnv()
 	if err != nil {
 		logger.Error("failed to load env", slog.Any("error", err))
 		os.Exit(1)
 	}
-	if err := run(logger); err != nil {
+	env := ParseEnvironment(os.Getenv)
+	if err := run(env, logger); err != nil {
 		logger.Error("openuss exited", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger) error {
+func run(env Environment, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -68,11 +44,11 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer HandleShutdown(shutdownTracing, logger)
-	return runServer(ctx, logger)
+	return runServer(ctx, env, logger)
 }
 
-func runServer(ctx context.Context, logger *slog.Logger) error {
-	srv, err := newServer(logger)
+func runServer(ctx context.Context, env Environment, logger *slog.Logger) error {
+	srv, err := newServer(env, logger)
 	if err != nil {
 		return err
 	}
@@ -87,63 +63,28 @@ func runServer(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
-func newServer(logger *slog.Logger) (*server.Server, error) {
-	tokens, err := NewTokenSource()
-	if err != nil {
-		return nil, err
-	}
-	intents := scd.NewInMemoryIntentStore()
-	planning, err := NewPlanningHandler(tokens, intents)
+func newServer(env Environment, logger *slog.Logger) (*server.Server, error) {
+	services, err := NewServices(env)
 	if err != nil {
 		return nil, err
 	}
 	return server.Listen(
-		ResolveAddress(),
-		NewHTTPHandler(intents, planning, logger),
+		env.ListenAddress,
+		NewHTTPHandler(services, logger),
 		logger)
 }
 
-func NewTokenSource() (auth.TokenSource, error) {
-	if os.Getenv("TOKEN_IMPL") == "memory" {
-		return auth.NewInMemoryTokenSource(), nil
-	}
-	endpoint := os.Getenv("OAUTH_ENDPOINT")
-	sub := os.Getenv("OAUTH_SUB")
-	return auth.NewDummyOAuth(endpoint, sub, nil)
-}
-
-func NewHTTPHandler(intents scd.IntentStore, planning router.Registrar, logger *slog.Logger) http.Handler {
-	routes := createRouter(intents, planning)
+func NewHTTPHandler(services Services, logger *slog.Logger) http.Handler {
+	routes := createRouter(services)
 	return httplog.Middleware(logger)(routes)
 }
 
-func createRouter(intents scd.IntentStore, planning router.Registrar) http.Handler {
+func createRouter(services Services) http.Handler {
 	return router.New(
 		versioning.New(),
-		planning,
-		uss.New(intents, auth.NewUnsafeAuthorizer()),
+		services.Planning,
+		uss.New(services.Intents, services.Authorizer),
 	)
-}
-
-func NewPlanningHandler(tokens auth.TokenSource, intents scd.IntentStore) (*flightplanning.Handler, error) {
-	ussBaseURL := os.Getenv("USS_BASE_URL")
-	if strings.TrimSpace(ussBaseURL) == "" {
-		return nil, errors.New("USS_BASE_URL is required")
-	}
-
-	client := utmclient.New(tokens, nil)
-	dssClient := newDSSClient(client)
-	peerClient := peer.New(client)
-	flights := flightplanning.NewInMemoryFlightStore()
-	service := scd.New(dssClient, peerClient, intents, ussBaseURL)
-	return flightplanning.New(service, flights), nil
-}
-
-func newDSSClient(client *utmclient.Client) dss.Client {
-	if os.Getenv("DSS_IMPL") == "memory" {
-		return dss.NewInMemoryDSS()
-	}
-	return dss.New(os.Getenv("DSS_BASE_URL"), client)
 }
 
 func HandleShutdown(shutdown func(context.Context) error, logger *slog.Logger) {
